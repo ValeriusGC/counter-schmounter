@@ -1,0 +1,27 @@
+# Build outputs
+build/
+.dart_tool/
+*.cg.g.dart
+*.cg.f.dart
+*.freezed.dart
+*.g.dart
+
+# Platform-specific (обычно не нужны для Flutter-логики)
+ios/
+android/
+web/
+linux/
+macos/
+windows/
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# Dependencies
+.pub-cache/
+.pub/
+
+# Logs
+*.log

@@ -17,3 +17,4 @@ final authRepositoryProvider = Provider<AuthRepository>((ref) {
   final client = ref.watch(supabaseClientProvider);
   return SupabaseAuthRepository(client);
 });
+

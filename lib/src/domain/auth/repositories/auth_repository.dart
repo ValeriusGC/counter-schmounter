@@ -40,3 +40,4 @@ abstract class AuthRepository {
   /// Выбрасывает исключение при ошибках сети или других проблемах.
   Future<void> signOut();
 }
+

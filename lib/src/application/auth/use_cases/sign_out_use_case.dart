@@ -29,3 +29,4 @@ final signOutUseCaseProvider = Provider<SignOutUseCase>((ref) {
   final repository = ref.watch(authRepositoryProvider);
   return SignOutUseCase(repository);
 });
+

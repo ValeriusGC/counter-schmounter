@@ -71,3 +71,4 @@ class SupabaseAuthRepository implements AuthRepository {
     await _client.auth.signOut();
   }
 }
+
