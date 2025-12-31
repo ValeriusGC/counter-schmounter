@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import 'package:counter_schmounter/src/core/core.dart';
 import 'package:counter_schmounter/src/presentation/auth/viewmodels/signup_viewmodel.dart';
 import 'package:counter_schmounter/src/presentation/shared/navigation/navigation_state.dart';
 
@@ -34,7 +33,13 @@ class SignupScreen extends ConsumerWidget {
     });
 
     return Scaffold(
-      appBar: AppBar(title: Text('Sign up'.hardcoded)),
+      appBar: AppBar(
+        title: Text('Sign up'.hardcoded),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => context.go('/counter'),
+        ),
+      ),
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.all(16),
@@ -77,7 +82,7 @@ class SignupScreen extends ConsumerWidget {
             const SizedBox(height: 12),
             // Ссылка на экран входа
             TextButton(
-              onPressed: () => context.go('/login'),
+              onPressed: () => context.push('/login'),
               child: Text('Back to sign in'.hardcoded),
             ),
           ],

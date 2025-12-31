@@ -15,17 +15,16 @@ import 'package:counter_schmounter/src/presentation/counter/screens/counter_scre
 /// Маршруты:
 /// - `/login` - экран входа
 /// - `/signup` - экран регистрации
-/// - `/counter` - защищенный экран счетчика (требует аутентификации)
+/// - `/counter` - публичный экран счетчика (не требует аутентификации)
 ///
 /// Логика редиректов:
-/// - Неавторизованные пользователи перенаправляются на `/login`
 /// - Авторизованные пользователи на `/login` или `/signup` перенаправляются на `/counter`
 final goRouterProvider = Provider<GoRouter>((ref) {
   // Отслеживаем состояние аутентификации для реактивного обновления роутера
   final auth = ref.watch(authStateListenableProvider);
 
   return GoRouter(
-    // Начальный маршрут (будет перенаправлен, если пользователь не авторизован)
+    // Начальный маршрут
     initialLocation: '/counter',
     // Роутер будет обновляться при изменении состояния аутентификации
     refreshListenable: auth,
@@ -36,12 +35,6 @@ final goRouterProvider = Provider<GoRouter>((ref) {
 
       final isOnLogin = loc == '/login';
       final isOnSignup = loc == '/signup';
-
-      // Если пользователь не авторизован и пытается попасть на защищенный маршрут,
-      // перенаправляем на экран входа
-      if (!isAuth && !isOnLogin && !isOnSignup) {
-        return '/login';
-      }
 
       // Если пользователь авторизован и находится на экранах входа/регистрации,
       // перенаправляем на главный экран приложения
@@ -62,7 +55,7 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const SignupScreen(),
       ),
 
-      /// Защищенный экран счетчика (доступен только авторизованным пользователям)
+      /// Публичный экран счетчика (доступен всем пользователям)
       GoRoute(
         path: '/counter',
         builder: (context, state) => const CounterScreen(),

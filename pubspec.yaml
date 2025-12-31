@@ -36,6 +36,8 @@ dependencies:
   cupertino_icons: ^1.0.8
   state_notifier: ^1.0.0
   riverpod_annotation: ^4.0.0
+  shared_preferences: ^2.2.2
+  uuid: ^4.3.3
 
 dev_dependencies:
   flutter_test:

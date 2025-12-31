@@ -1,7 +1,9 @@
 import 'package:counter_schmounter/src/application/auth/use_cases/sign_in_use_case.dart';
 import 'package:counter_schmounter/src/application/auth/use_cases/sign_out_use_case.dart';
 import 'package:counter_schmounter/src/application/auth/use_cases/sign_up_use_case.dart';
+import 'package:counter_schmounter/src/application/counter/use_cases/increment_counter_use_case.dart';
 import 'package:counter_schmounter/src/infrastructure/auth/providers/auth_repository_provider.dart';
+import 'package:counter_schmounter/src/infrastructure/shared/providers/client_identity_service_provider.dart';
 import 'mocks.dart';
 
 /// Test provider override for AuthRepository
@@ -26,5 +28,17 @@ dynamic createSignUpUseCaseOverride(MockSignUpUseCase mockUseCase) {
 /// Allows injecting a mock use case for testing
 dynamic createSignOutUseCaseOverride(MockSignOutUseCase mockUseCase) {
   return signOutUseCaseProvider.overrideWithValue(mockUseCase);
+}
+
+/// Test provider override for ClientIdentityService
+/// Allows injecting a mock service for testing
+dynamic createClientIdentityServiceOverride(MockClientIdentityService mockService) {
+  return clientIdentityServiceProvider.overrideWithValue(mockService);
+}
+
+/// Test provider override for IncrementCounterUseCase
+/// Allows injecting a mock use case for testing
+dynamic createIncrementCounterUseCaseOverride(MockIncrementCounterUseCase mockUseCase) {
+  return incrementCounterUseCaseProvider.overrideWithValue(mockUseCase);
 }
 

@@ -1,3 +1,5 @@
+import 'dart:developer' as developer;
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:counter_schmounter/src/domain/auth/repositories/auth_repository.dart';
@@ -25,7 +27,40 @@ class SignUpUseCase {
     required String email,
     required String password,
   }) async {
-    await _repository.signUp(email: email, password: password);
+    developer.log(
+      '📝 Sign up initiated',
+      name: 'SignUpUseCase',
+      error: null,
+      stackTrace: null,
+      level: 800, // INFO level
+    );
+    developer.log(
+      '   Email: $email',
+      name: 'SignUpUseCase',
+      error: null,
+      stackTrace: null,
+      level: 700, // FINE level
+    );
+
+    try {
+      await _repository.signUp(email: email, password: password);
+      developer.log(
+        '✅ Sign up successful',
+        name: 'SignUpUseCase',
+        error: null,
+        stackTrace: null,
+        level: 800, // INFO level
+      );
+    } catch (error, stackTrace) {
+      developer.log(
+        '❌ Sign up failed',
+        name: 'SignUpUseCase',
+        error: error,
+        stackTrace: stackTrace,
+        level: 1000, // SEVERE level
+      );
+      rethrow;
+    }
   }
 }
 

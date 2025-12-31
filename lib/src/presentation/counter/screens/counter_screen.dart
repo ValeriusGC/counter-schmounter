@@ -1,16 +1,15 @@
-import 'package:counter_schmounter/src/core/core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import 'package:counter_schmounter/src/infrastructure/auth/providers/auth_state_listenable_provider.dart';
 import 'package:counter_schmounter/src/presentation/counter/viewmodels/counter_viewmodel.dart';
-import 'package:counter_schmounter/src/presentation/shared/navigation/navigation_state.dart';
 
-/// Экран счетчика - главный защищенный экран приложения.
+/// Экран счетчика - главный публичный экран приложения.
 ///
 /// Отображает простой счетчик, который можно увеличивать нажатием на кнопку.
-/// Доступен только авторизованным пользователям (защита на уровне роутера).
-/// Содержит кнопку выхода из системы в AppBar.
+/// Доступен всем пользователям (не требует аутентификации).
+/// Содержит кнопку "Sign in/Sign up" в AppBar (для неавторизованных) или кнопку выхода (для авторизованных).
 ///
 /// Использует [CounterViewModel] для управления состоянием и бизнес-логикой.
 /// UI слой только отображает состояние и передает события в ViewModel.
@@ -22,30 +21,32 @@ class CounterScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(counterViewModelProvider);
     final viewModel = ref.read(counterViewModelProvider.notifier);
-
-    // Отслеживаем навигацию и выполняем переход при необходимости
-    ref.listen<CounterState>(counterViewModelProvider, (previous, next) {
-      if (next.navigationAction == NavigationAction.navigateToLogin) {
-        viewModel.resetNavigation();
-        context.go('/login');
-      }
-    });
+    final isAuthenticated = ref
+        .watch(authStateListenableProvider)
+        .isAuthenticated;
 
     return Scaffold(
       appBar: AppBar(
         title: Text('Counter'.hardcoded),
         actions: [
-          // Кнопка выхода из системы с индикатором загрузки
-          TextButton(
-            onPressed: state.isSigningOut ? null : () => viewModel.signOut(),
-            child: state.isSigningOut
-                ? const SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
+          // Кнопка входа/регистрации (для неавторизованных пользователей)
+          if (!isAuthenticated)
+            TextButton(
+              onPressed: () => context.push('/login'),
+              child: const Text('Sign in/Sign up'),
+            ),
+          // Кнопка выхода из системы с индикатором загрузки (только для авторизованных)
+          if (isAuthenticated)
+            TextButton(
+              onPressed: state.isSigningOut ? null : () => viewModel.signOut(),
+              child: state.isSigningOut
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
                 : Text('Sign out'.hardcoded),
-          ),
+            ),
           const SizedBox(width: 8),
         ],
       ),

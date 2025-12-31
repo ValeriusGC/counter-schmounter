@@ -1,6 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:uuid/uuid.dart';
+import 'package:counter_schmounter/src/domain/counter/operations/increment_operation.dart';
+import 'package:counter_schmounter/src/domain/counter/utils/counter_aggregator.dart';
 import 'package:counter_schmounter/src/presentation/counter/viewmodels/counter_viewmodel.dart';
 import 'package:counter_schmounter/src/presentation/shared/navigation/navigation_state.dart';
 import '../../test_helpers/mocks.dart';
@@ -8,6 +11,7 @@ import '../../test_helpers/test_providers.dart';
 
 void main() {
   late MockSignOutUseCase mockSignOutUseCase;
+  late MockIncrementCounterUseCase mockIncrementCounterUseCase;
   late ProviderContainer container;
 
   setUpAll(() {
@@ -16,9 +20,12 @@ void main() {
 
   setUp(() {
     mockSignOutUseCase = MockSignOutUseCase();
+    mockIncrementCounterUseCase = MockIncrementCounterUseCase();
+
     container = ProviderContainer(
       overrides: [
         createSignOutUseCaseOverride(mockSignOutUseCase),
+        createIncrementCounterUseCaseOverride(mockIncrementCounterUseCase),
       ],
     );
   });
@@ -35,6 +42,15 @@ void main() {
 
         // Assert
         expect(state.counter, 0);
+        expect(state.operations, isEmpty);
+      });
+
+      test('has empty operations list', () {
+        // Arrange & Act
+        final state = container.read(counterViewModelProvider);
+
+        // Assert
+        expect(state.operations, isEmpty);
       });
 
       test('has isSigningOut as false initially', () {
@@ -57,18 +73,88 @@ void main() {
     group('incrementCounter', () {
       test('increments counter by 1', () {
         // Arrange
+        final operation = IncrementOperation(
+          opId: const Uuid().v4(),
+          clientId: 'test-client-id',
+          createdAt: DateTime.now(),
+        );
+        when(() => mockIncrementCounterUseCase.execute()).thenReturn(operation);
         final viewModel = container.read(counterViewModelProvider.notifier);
 
         // Act
         viewModel.incrementCounter();
 
         // Assert
+        verify(() => mockIncrementCounterUseCase.execute()).called(1);
         final state = container.read(counterViewModelProvider);
         expect(state.counter, 1);
+        expect(state.operations.length, 1);
+        expect(state.operations.first, equals(operation));
+      });
+
+      test('adds operation returned by use case to state', () {
+        // Arrange
+        final operation = IncrementOperation(
+          opId: const Uuid().v4(),
+          clientId: 'test-client-id',
+          createdAt: DateTime.now(),
+        );
+        when(() => mockIncrementCounterUseCase.execute()).thenReturn(operation);
+        final viewModel = container.read(counterViewModelProvider.notifier);
+
+        // Act
+        viewModel.incrementCounter();
+
+        // Assert
+        verify(() => mockIncrementCounterUseCase.execute()).called(1);
+        final state = container.read(counterViewModelProvider);
+        expect(state.operations, contains(operation));
+      });
+
+      test('creates unique operations when called multiple times', () {
+        // Arrange
+        final op1 = IncrementOperation(
+          opId: const Uuid().v4(),
+          clientId: 'test-client-id',
+          createdAt: DateTime.now(),
+        );
+        final op2 = IncrementOperation(
+          opId: const Uuid().v4(),
+          clientId: 'test-client-id',
+          createdAt: DateTime.now().add(const Duration(seconds: 1)),
+        );
+        var callCount = 0;
+        when(() => mockIncrementCounterUseCase.execute()).thenAnswer((_) {
+          return callCount++ == 0 ? op1 : op2;
+        });
+        final viewModel = container.read(counterViewModelProvider.notifier);
+
+        // Act
+        viewModel.incrementCounter();
+        viewModel.incrementCounter();
+
+        // Assert
+        verify(() => mockIncrementCounterUseCase.execute()).called(2);
+        final state = container.read(counterViewModelProvider);
+        expect(state.operations.length, 2);
+        expect(state.operations[0], equals(op1));
+        expect(state.operations[1], equals(op2));
       });
 
       test('increments counter multiple times', () {
         // Arrange
+        final operations = List.generate(
+          3,
+          (index) => IncrementOperation(
+            opId: const Uuid().v4(),
+            clientId: 'test-client-id',
+            createdAt: DateTime.now().add(Duration(seconds: index)),
+          ),
+        );
+        var callCount = 0;
+        when(() => mockIncrementCounterUseCase.execute()).thenAnswer((_) {
+          return operations[callCount++];
+        });
         final viewModel = container.read(counterViewModelProvider.notifier);
 
         // Act
@@ -77,12 +163,27 @@ void main() {
         viewModel.incrementCounter();
 
         // Assert
+        verify(() => mockIncrementCounterUseCase.execute()).called(3);
         final state = container.read(counterViewModelProvider);
         expect(state.counter, 3);
+        expect(state.operations.length, 3);
+        expect(state.operations.every((op) => op is IncrementOperation), isTrue);
       });
 
       test('increments counter from non-zero value', () {
         // Arrange
+        final operations = List.generate(
+          3,
+          (index) => IncrementOperation(
+            opId: const Uuid().v4(),
+            clientId: 'test-client-id',
+            createdAt: DateTime.now().add(Duration(seconds: index)),
+          ),
+        );
+        var callCount = 0;
+        when(() => mockIncrementCounterUseCase.execute()).thenAnswer((_) {
+          return operations[callCount++];
+        });
         final viewModel = container.read(counterViewModelProvider.notifier);
         viewModel.incrementCounter();
         viewModel.incrementCounter();
@@ -91,12 +192,25 @@ void main() {
         viewModel.incrementCounter();
 
         // Assert
+        verify(() => mockIncrementCounterUseCase.execute()).called(3);
         final state = container.read(counterViewModelProvider);
         expect(state.counter, 3);
       });
 
       test('can increment counter many times', () {
         // Arrange
+        final operations = List.generate(
+          100,
+          (index) => IncrementOperation(
+            opId: const Uuid().v4(),
+            clientId: 'test-client-id',
+            createdAt: DateTime.now().add(Duration(seconds: index)),
+          ),
+        );
+        var callCount = 0;
+        when(() => mockIncrementCounterUseCase.execute()).thenAnswer((_) {
+          return operations[callCount++];
+        });
         final viewModel = container.read(counterViewModelProvider.notifier);
 
         // Act
@@ -105,12 +219,55 @@ void main() {
         }
 
         // Assert
+        verify(() => mockIncrementCounterUseCase.execute()).called(100);
         final state = container.read(counterViewModelProvider);
         expect(state.counter, 100);
+        expect(state.operations.length, 100);
+      });
+
+      test('replay operations gives same result (idempotency)', () {
+        // Arrange
+        final operations = List.generate(
+          3,
+          (index) => IncrementOperation(
+            opId: const Uuid().v4(),
+            clientId: 'test-client-id',
+            createdAt: DateTime.now().add(Duration(seconds: index)),
+          ),
+        );
+        var callCount = 0;
+        when(() => mockIncrementCounterUseCase.execute()).thenAnswer((_) {
+          return operations[callCount++];
+        });
+        final viewModel = container.read(counterViewModelProvider.notifier);
+        viewModel.incrementCounter();
+        viewModel.incrementCounter();
+        viewModel.incrementCounter();
+
+        final state1 = container.read(counterViewModelProvider);
+        final operations1 = state1.operations;
+
+        // Act - compute counter from operations multiple times
+        final counter1 = state1.counter;
+        final counter2 = CounterAggregator.compute(operations1);
+        final counter3 = CounterAggregator.compute(operations1);
+
+        // Assert
+        expect(counter1, 3);
+        expect(counter2, 3);
+        expect(counter3, 3);
+        expect(counter1, equals(counter2));
+        expect(counter2, equals(counter3));
       });
 
       test('does not affect navigation action', () {
         // Arrange
+        final operation = IncrementOperation(
+          opId: const Uuid().v4(),
+          clientId: 'test-client-id',
+          createdAt: DateTime.now(),
+        );
+        when(() => mockIncrementCounterUseCase.execute()).thenReturn(operation);
         final viewModel = container.read(counterViewModelProvider.notifier);
 
         // Act
@@ -123,6 +280,12 @@ void main() {
 
       test('does not affect sign out state', () {
         // Arrange
+        final operation = IncrementOperation(
+          opId: const Uuid().v4(),
+          clientId: 'test-client-id',
+          createdAt: DateTime.now(),
+        );
+        when(() => mockIncrementCounterUseCase.execute()).thenReturn(operation);
         final viewModel = container.read(counterViewModelProvider.notifier);
 
         // Act
@@ -147,7 +310,7 @@ void main() {
         // Assert
         final state = container.read(counterViewModelProvider);
         expect(state.isSigningOut, isFalse);
-        expect(state.navigationAction, NavigationAction.navigateToLogin);
+        expect(state.navigationAction, NavigationAction.none);
         expect(state.signOutAsyncValue.hasError, isFalse);
         verify(() => mockSignOutUseCase.execute()).called(1);
       });
@@ -243,7 +406,7 @@ void main() {
 
         await viewModel.signOut();
         final stateBeforeReset = container.read(counterViewModelProvider);
-        expect(stateBeforeReset.navigationAction, NavigationAction.navigateToLogin);
+        expect(stateBeforeReset.navigationAction, NavigationAction.none);
 
         // Act
         viewModel.resetNavigation();
@@ -271,9 +434,20 @@ void main() {
     group('combined operations', () {
       test('increment and sign out work independently', () async {
         // Arrange
-        final viewModel = container.read(counterViewModelProvider.notifier);
-
+        final operations = List.generate(
+          2,
+          (index) => IncrementOperation(
+            opId: const Uuid().v4(),
+            clientId: 'test-client-id',
+            createdAt: DateTime.now().add(Duration(seconds: index)),
+          ),
+        );
+        var callCount = 0;
+        when(() => mockIncrementCounterUseCase.execute()).thenAnswer((_) {
+          return operations[callCount++];
+        });
         when(() => mockSignOutUseCase.execute()).thenAnswer((_) async => Future.value());
+        final viewModel = container.read(counterViewModelProvider.notifier);
 
         // Act
         viewModel.incrementCounter();
@@ -283,17 +457,28 @@ void main() {
         // Assert
         final state = container.read(counterViewModelProvider);
         expect(state.counter, 2);
-        expect(state.navigationAction, NavigationAction.navigateToLogin);
+        expect(state.navigationAction, NavigationAction.none);
       });
 
       test('sign out error does not affect counter', () async {
         // Arrange
+        final operations = List.generate(
+          2,
+          (index) => IncrementOperation(
+            opId: const Uuid().v4(),
+            clientId: 'test-client-id',
+            createdAt: DateTime.now().add(Duration(seconds: index)),
+          ),
+        );
+        var callCount = 0;
+        when(() => mockIncrementCounterUseCase.execute()).thenAnswer((_) {
+          return operations[callCount++];
+        });
+        when(() => mockSignOutUseCase.execute()).thenThrow(Exception('Error'));
         final viewModel = container.read(counterViewModelProvider.notifier);
 
         viewModel.incrementCounter();
         viewModel.incrementCounter();
-
-        when(() => mockSignOutUseCase.execute()).thenThrow(Exception('Error'));
 
         // Act
         await viewModel.signOut();
