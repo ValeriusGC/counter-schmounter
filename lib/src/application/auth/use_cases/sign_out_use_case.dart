@@ -1,9 +1,6 @@
 import 'dart:developer' as developer;
 
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-
-import 'package:counter_schmounter/src/domain/auth/repositories/auth_repository.dart';
-import 'package:counter_schmounter/src/infrastructure/auth/providers/auth_repository_provider.dart';
+import 'package:supa_counter/src/domain/auth/repositories/auth_repository.dart';
 
 /// Use case для выхода пользователя из системы.
 ///
@@ -49,11 +46,3 @@ class SignOutUseCase {
     }
   }
 }
-
-/// Провайдер для [SignOutUseCase].
-///
-/// Использует [authRepositoryProvider] для получения репозитория аутентификации.
-final signOutUseCaseProvider = Provider<SignOutUseCase>((ref) {
-  final repository = ref.watch(authRepositoryProvider);
-  return SignOutUseCase(repository);
-});

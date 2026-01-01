@@ -1,9 +1,9 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_riverpod/legacy.dart' show StateNotifierProvider;
-import 'package:state_notifier/state_notifier.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
 
-import 'package:counter_schmounter/src/application/auth/use_cases/sign_up_use_case.dart';
-import 'package:counter_schmounter/src/presentation/shared/navigation/navigation_state.dart';
+import 'package:supa_counter/src/infrastructure/auth/providers/auth_use_case_providers.dart';
+import 'package:supa_counter/src/presentation/shared/navigation/navigation_state.dart';
+
+part 'signup_viewmodel.g.dart';
 
 /// Состояние ViewModel для экрана регистрации.
 ///
@@ -58,15 +58,15 @@ class SignupState {
   }
 }
 
-/// ViewModel для экрана регистрации.
+/// Провайдер для экрана регистрации, сгенерированный через build_runner.
 ///
-/// Управляет состоянием формы регистрации и выполняет создание нового аккаунта.
-/// Использует [StateNotifier] для реактивного управления состоянием.
-class SignupViewModel extends StateNotifier<SignupState> {
-  /// Создает экземпляр [SignupViewModel].
-  SignupViewModel(this._signUpUseCase) : super(const SignupState());
-
-  final SignUpUseCase _signUpUseCase;
+/// Использует встроенный Notifier из Riverpod для реактивного управления состоянием.
+@riverpod
+class SignupViewModel extends _$SignupViewModel {
+  @override
+  SignupState build() {
+    return const SignupState();
+  }
 
   /// Обновляет email адрес в форме.
   void updateEmail(String email) {
@@ -86,6 +86,8 @@ class SignupViewModel extends StateNotifier<SignupState> {
   /// так как в зависимости от настроек Supabase может потребоваться
   /// подтверждение email перед входом.
   Future<void> signUp() async {
+    final signUpUseCase = ref.read(signUpUseCaseProvider);
+
     // Устанавливаем состояние загрузки
     state = state.copyWith(
       signUpAsyncValue: const AsyncValue.loading(),
@@ -93,7 +95,7 @@ class SignupViewModel extends StateNotifier<SignupState> {
     );
 
     try {
-      await _signUpUseCase.execute(
+      await signUpUseCase.execute(
         email: state.email.trim(),
         password: state.password,
       );
@@ -117,17 +119,4 @@ class SignupViewModel extends StateNotifier<SignupState> {
   void resetNavigation() {
     state = state.copyWith(navigationAction: NavigationAction.none);
   }
-
-  /// Текущее состояние ViewModel (публичный доступ).
-  SignupState get currentState => state;
 }
-
-/// Провайдер для [SignupViewModel].
-///
-/// Предоставляет единый экземпляр ViewModel для экрана регистрации.
-/// Использует StateNotifierProvider для правильной реактивности с StateNotifier.
-final signupViewModelProvider =
-    StateNotifierProvider<SignupViewModel, SignupState>((ref) {
-      final signUpUseCase = ref.watch(signUpUseCaseProvider);
-      return SignupViewModel(signUpUseCase);
-    });

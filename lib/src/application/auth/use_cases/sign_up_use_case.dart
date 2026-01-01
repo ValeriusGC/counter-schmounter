@@ -1,9 +1,6 @@
 import 'dart:developer' as developer;
 
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-
-import 'package:counter_schmounter/src/domain/auth/repositories/auth_repository.dart';
-import 'package:counter_schmounter/src/infrastructure/auth/providers/auth_repository_provider.dart';
+import 'package:supa_counter/src/domain/auth/repositories/auth_repository.dart';
 
 /// Use case для регистрации нового пользователя.
 ///
@@ -63,11 +60,3 @@ class SignUpUseCase {
     }
   }
 }
-
-/// Провайдер для [SignUpUseCase].
-///
-/// Использует [authRepositoryProvider] для получения репозитория аутентификации.
-final signUpUseCaseProvider = Provider<SignUpUseCase>((ref) {
-  final repository = ref.watch(authRepositoryProvider);
-  return SignUpUseCase(repository);
-});
