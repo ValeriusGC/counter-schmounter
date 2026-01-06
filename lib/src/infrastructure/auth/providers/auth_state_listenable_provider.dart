@@ -66,4 +66,3 @@ final isAuthenticatedProvider = Provider<bool>((ref) {
   final auth = ref.watch(authStateListenableProvider);
   return auth.isAuthenticated;
 });
-

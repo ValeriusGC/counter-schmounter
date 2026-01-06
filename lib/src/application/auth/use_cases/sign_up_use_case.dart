@@ -36,4 +36,3 @@ final signUpUseCaseProvider = Provider<SignUpUseCase>((ref) {
   final repository = ref.watch(authRepositoryProvider);
   return SignUpUseCase(repository);
 });
-

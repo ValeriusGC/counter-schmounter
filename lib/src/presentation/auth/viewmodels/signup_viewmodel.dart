@@ -128,6 +128,6 @@ class SignupViewModel extends StateNotifier<SignupState> {
 /// Использует StateNotifierProvider для правильной реактивности с StateNotifier.
 final signupViewModelProvider =
     StateNotifierProvider<SignupViewModel, SignupState>((ref) {
-  final signUpUseCase = ref.watch(signUpUseCaseProvider);
-  return SignupViewModel(signUpUseCase);
-});
+      final signUpUseCase = ref.watch(signUpUseCaseProvider);
+      return SignupViewModel(signUpUseCase);
+    });

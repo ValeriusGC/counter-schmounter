@@ -15,4 +15,3 @@ enum NavigationAction {
   /// Переход на экран регистрации
   navigateToSignup,
 }
-

@@ -26,15 +26,12 @@ class SignupScreen extends ConsumerWidget {
     final viewModel = ref.read(signupViewModelProvider.notifier);
 
     // Отслеживаем навигацию и выполняем переход при необходимости
-    ref.listen<SignupState>(
-      signupViewModelProvider,
-      (previous, next) {
-        if (next.navigationAction == NavigationAction.navigateToLogin) {
-          viewModel.resetNavigation();
-          context.go('/login');
-        }
-      },
-    );
+    ref.listen<SignupState>(signupViewModelProvider, (previous, next) {
+      if (next.navigationAction == NavigationAction.navigateToLogin) {
+        viewModel.resetNavigation();
+        context.go('/login');
+      }
+    });
 
     return Scaffold(
       appBar: AppBar(title: Text('Sign up'.hardcoded)),
