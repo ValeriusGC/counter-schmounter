@@ -1,7 +1,8 @@
-import 'package:counter_schmounter/src/core/ext.dart';
 import 'package:counter_schmounter/src/router.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import 'core/src/extensions/string_extensions.dart';
 
 /// Корневой виджет приложения.
 ///
