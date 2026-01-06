@@ -1,10 +1,9 @@
-import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart' show StateNotifierProvider;
 import 'package:state_notifier/state_notifier.dart';
 
 import 'package:counter_schmounter/src/application/auth/use_cases/sign_up_use_case.dart';
 import 'package:counter_schmounter/src/presentation/shared/navigation/navigation_state.dart';
-
-part 'signup_viewmodel.g.dart';
 
 /// Состояние ViewModel для экрана регистрации.
 ///
@@ -81,7 +80,7 @@ class SignupViewModel extends StateNotifier<SignupState> {
 
   /// Выполняет регистрацию нового пользователя.
   ///
-  /// Устанавливает состояние загрузки, вызывает use case для регистрации,
+  /// Устанавливает состояние загрузки, вызывает [SignUpUseCase] для регистрации,
   /// и обновляет состояние в зависимости от результата операции.
   /// При успешной регистрации устанавливает [NavigationAction.navigateToLogin],
   /// так как в зависимости от настроек Supabase может потребоваться
@@ -123,11 +122,12 @@ class SignupViewModel extends StateNotifier<SignupState> {
   SignupState get currentState => state;
 }
 
-/// Провайдер для [SignupViewModel], сгенерированный через build_runner.
+/// Провайдер для [SignupViewModel].
 ///
 /// Предоставляет единый экземпляр ViewModel для экрана регистрации.
-@riverpod
-SignupViewModel signupViewModel(Ref ref) {
-  final signUpUseCase = ref.watch(signUpUseCaseProvider);
-  return SignupViewModel(signUpUseCase);
-}
+/// Использует StateNotifierProvider для правильной реактивности с StateNotifier.
+final signupViewModelProvider =
+    StateNotifierProvider<SignupViewModel, SignupState>((ref) {
+      final signUpUseCase = ref.watch(signUpUseCaseProvider);
+      return SignupViewModel(signUpUseCase);
+    });

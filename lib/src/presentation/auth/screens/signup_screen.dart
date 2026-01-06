@@ -22,21 +22,16 @@ class SignupScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final viewModel = ref.watch(signupViewModelProvider);
-    final state = ref.watch(
-      signupViewModelProvider.select((vm) => vm.currentState),
-    );
+    final state = ref.watch(signupViewModelProvider);
+    final viewModel = ref.read(signupViewModelProvider.notifier);
 
     // Отслеживаем навигацию и выполняем переход при необходимости
-    ref.listen<SignupState>(
-      signupViewModelProvider.select((vm) => vm.currentState),
-      (previous, next) {
-        if (next.navigationAction == NavigationAction.navigateToLogin) {
-          viewModel.resetNavigation();
-          context.go('/login');
-        }
-      },
-    );
+    ref.listen<SignupState>(signupViewModelProvider, (previous, next) {
+      if (next.navigationAction == NavigationAction.navigateToLogin) {
+        viewModel.resetNavigation();
+        context.go('/login');
+      }
+    });
 
     return Scaffold(
       appBar: AppBar(title: Text('Sign up'.hardcoded)),
