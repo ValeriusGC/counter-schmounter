@@ -5,6 +5,8 @@ import 'package:go_router/go_router.dart';
 import 'package:counter_schmounter/src/presentation/auth/viewmodels/signup_viewmodel.dart';
 import 'package:counter_schmounter/src/presentation/shared/navigation/navigation_state.dart';
 
+import 'package:counter_schmounter/src/core/src/extensions/string_extensions.dart';
+
 /// Экран регистрации нового пользователя.
 ///
 /// Предоставляет форму для создания нового аккаунта с использованием

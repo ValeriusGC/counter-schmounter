@@ -1,9 +1,8 @@
 import 'dart:developer' as developer;
 
+import 'package:counter_schmounter/src/domain/shared/services/client_identity_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
-
-import 'package:supa_counter/src/domain/shared/services/client_identity_service.dart';
 
 /// Реализация [ClientIdentityService] с использованием SharedPreferences.
 ///

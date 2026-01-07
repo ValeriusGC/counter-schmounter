@@ -1,11 +1,10 @@
 import 'dart:developer' as developer;
 
+import 'package:counter_schmounter/src/domain/counter/operations/increment_operation.dart';
+import 'package:counter_schmounter/src/domain/shared/services/client_identity_service.dart';
+import 'package:counter_schmounter/src/infrastructure/shared/providers/client_identity_service_provider.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:uuid/uuid.dart';
-
-import 'package:supa_counter/src/domain/counter/operations/increment_operation.dart';
-import 'package:supa_counter/src/domain/shared/services/client_identity_service.dart';
-import 'package:supa_counter/src/infrastructure/shared/providers/client_identity_service_provider.dart';
 
 part 'increment_counter_use_case.g.dart';
 

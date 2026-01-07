@@ -1,5 +1,5 @@
-import 'package:supa_counter/src/domain/counter/operations/counter_operation.dart';
-import 'package:supa_counter/src/domain/counter/operations/increment_operation.dart';
+import 'package:counter_schmounter/src/domain/counter/operations/counter_operation.dart';
+import 'package:counter_schmounter/src/domain/counter/operations/increment_operation.dart';
 
 /// Утилита для агрегации операций счетчика в итоговое состояние.
 ///

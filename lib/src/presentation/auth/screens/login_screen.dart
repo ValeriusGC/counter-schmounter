@@ -5,6 +5,8 @@ import 'package:go_router/go_router.dart';
 import 'package:counter_schmounter/src/presentation/auth/viewmodels/login_viewmodel.dart';
 import 'package:counter_schmounter/src/presentation/shared/navigation/navigation_state.dart';
 
+import 'package:counter_schmounter/src/core/src/extensions/string_extensions.dart';
+
 /// Экран входа в систему.
 ///
 /// Предоставляет форму для авторизации существующих пользователей

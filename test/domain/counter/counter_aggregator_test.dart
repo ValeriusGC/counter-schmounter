@@ -1,7 +1,7 @@
+import 'package:counter_schmounter/src/domain/counter/operations/increment_operation.dart';
+import 'package:counter_schmounter/src/domain/counter/utils/counter_aggregator.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:uuid/uuid.dart';
-import 'package:supa_counter/src/domain/counter/operations/increment_operation.dart';
-import 'package:supa_counter/src/domain/counter/utils/counter_aggregator.dart';
 
 void main() {
   group('CounterAggregator', () {

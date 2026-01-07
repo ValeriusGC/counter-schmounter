@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:counter_schmounter/src/infrastructure/auth/providers/auth_state_listenable_provider.dart';
 import 'package:counter_schmounter/src/presentation/counter/viewmodels/counter_viewmodel.dart';
+
+import 'package:counter_schmounter/src/core/src/extensions/string_extensions.dart';
 
 /// Экран счетчика - главный публичный экран приложения.
 ///
@@ -45,7 +48,7 @@ class CounterScreen extends ConsumerWidget {
                       height: 16,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
-                : Text('Sign out'.hardcoded),
+                  : Text('Sign out'.hardcoded),
             ),
           const SizedBox(width: 8),
         ],

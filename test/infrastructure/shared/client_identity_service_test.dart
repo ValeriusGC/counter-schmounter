@@ -1,7 +1,7 @@
+import 'package:counter_schmounter/src/infrastructure/shared/services/client_identity_service_impl.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:supa_counter/src/infrastructure/shared/services/client_identity_service_impl.dart';
 
 /// Mock для SharedPreferences
 class MockSharedPreferences extends Mock implements SharedPreferences {}
