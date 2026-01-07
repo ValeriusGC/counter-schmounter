@@ -1,3 +1,5 @@
+import 'dart:developer' as developer;
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:counter_schmounter/src/domain/auth/repositories/auth_repository.dart';
@@ -18,7 +20,33 @@ class SignOutUseCase {
   ///
   /// Выбрасывает исключение при ошибках сети или других проблемах.
   Future<void> execute() async {
-    await _repository.signOut();
+    developer.log(
+      '🚪 Sign out initiated',
+      name: 'SignOutUseCase',
+      error: null,
+      stackTrace: null,
+      level: 800, // INFO level
+    );
+
+    try {
+      await _repository.signOut();
+      developer.log(
+        '✅ Sign out successful',
+        name: 'SignOutUseCase',
+        error: null,
+        stackTrace: null,
+        level: 800, // INFO level
+      );
+    } catch (error, stackTrace) {
+      developer.log(
+        '❌ Sign out failed',
+        name: 'SignOutUseCase',
+        error: error,
+        stackTrace: stackTrace,
+        level: 1000, // SEVERE level
+      );
+      rethrow;
+    }
   }
 }
 

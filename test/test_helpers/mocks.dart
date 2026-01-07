@@ -3,7 +3,9 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:counter_schmounter/src/application/auth/use_cases/sign_in_use_case.dart';
 import 'package:counter_schmounter/src/application/auth/use_cases/sign_out_use_case.dart';
 import 'package:counter_schmounter/src/application/auth/use_cases/sign_up_use_case.dart';
+import 'package:counter_schmounter/src/application/counter/use_cases/increment_counter_use_case.dart';
 import 'package:counter_schmounter/src/domain/auth/repositories/auth_repository.dart';
+import 'package:counter_schmounter/src/domain/shared/services/client_identity_service.dart';
 
 /// Mock for SupabaseClient
 class MockSupabaseClient extends Mock implements SupabaseClient {}
@@ -25,6 +27,12 @@ class MockSignOutUseCase extends Mock implements SignOutUseCase {}
 
 /// Mock for User
 class MockUser extends Mock implements User {}
+
+/// Mock for ClientIdentityService
+class MockClientIdentityService extends Mock implements ClientIdentityService {}
+
+/// Mock for IncrementCounterUseCase
+class MockIncrementCounterUseCase extends Mock implements IncrementCounterUseCase {}
 
 /// Helper to register fallback values for mocktail
 void registerFallbackValues() {

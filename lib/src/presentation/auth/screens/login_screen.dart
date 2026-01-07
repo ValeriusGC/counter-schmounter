@@ -5,7 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:counter_schmounter/src/presentation/auth/viewmodels/login_viewmodel.dart';
 import 'package:counter_schmounter/src/presentation/shared/navigation/navigation_state.dart';
 
-import 'package:counter_schmounter/src/core/core.dart';
+import 'package:counter_schmounter/src/core/src/extensions/string_extensions.dart';
 
 /// Экран входа в систему.
 ///
@@ -33,7 +33,13 @@ class LoginScreen extends ConsumerWidget {
     });
 
     return Scaffold(
-      appBar: AppBar(title: Text('Sign in'.hardcoded)),
+      appBar: AppBar(
+        title: Text('Sign in'.hardcoded),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => context.go('/counter'),
+        ),
+      ),
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.all(16),
@@ -78,7 +84,7 @@ class LoginScreen extends ConsumerWidget {
             const SizedBox(height: 12),
             // Ссылка на экран регистрации
             TextButton(
-              onPressed: () => context.go('/signup'),
+              onPressed: () => context.push('/signup'),
               child: Text('Create account'.hardcoded),
             ),
           ],

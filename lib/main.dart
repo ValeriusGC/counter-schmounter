@@ -1,8 +1,13 @@
+import 'dart:developer' as developer;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:counter_schmounter/src/app.dart';
+import 'package:counter_schmounter/src/infrastructure/shared/providers/client_identity_service_provider.dart';
+import 'package:counter_schmounter/src/infrastructure/shared/services/client_identity_service_impl.dart';
 
 /// Точка входа в приложение.
 ///
@@ -40,6 +45,13 @@ Future<void> main() async {
   }
 
   // Инициализируем Supabase клиент с настройками аутентификации
+  developer.log(
+    '🔧 Initializing Supabase client...',
+    name: 'main',
+    error: null,
+    stackTrace: null,
+    level: 800, // INFO level
+  );
   await Supabase.initialize(
     url: supabaseUrl,
     anonKey: supabaseAnonKey,
@@ -52,7 +64,61 @@ Future<void> main() async {
       detectSessionInUri: true,
     ),
   );
+  developer.log(
+    '✅ Supabase client initialized',
+    name: 'main',
+    error: null,
+    stackTrace: null,
+    level: 800, // INFO level
+  );
+
+  // Инициализируем SharedPreferences
+  developer.log(
+    '💾 Initializing SharedPreferences...',
+    name: 'main',
+    error: null,
+    stackTrace: null,
+    level: 800, // INFO level
+  );
+  final sharedPreferences = await SharedPreferences.getInstance();
+  developer.log(
+    '✅ SharedPreferences initialized',
+    name: 'main',
+    error: null,
+    stackTrace: null,
+    level: 800, // INFO level
+  );
+
+  // Инициализируем ClientIdentityService
+  developer.log(
+    '🆔 Initializing Client Identity Service...',
+    name: 'main',
+    error: null,
+    stackTrace: null,
+    level: 800, // INFO level
+  );
+  final clientIdentityService = ClientIdentityServiceImpl(sharedPreferences);
+  await clientIdentityService.init();
 
   // Запускаем приложение с Riverpod провайдером для управления состоянием
-  runApp(ProviderScope(child: const App()));
+  developer.log(
+    '🚀 Starting application...',
+    name: 'main',
+    error: null,
+    stackTrace: null,
+    level: 800, // INFO level
+  );
+  runApp(
+    ProviderScope(
+      overrides: [
+        // Предоставляем инициализированный SharedPreferences
+        sharedPreferencesProvider.overrideWith((ref) => sharedPreferences),
+        // Предоставляем инициализированный ClientIdentityService
+        clientIdentityServiceProvider.overrideWith(
+          (ref) => clientIdentityService,
+        ),
+      ],
+      child: const App(),
+    ),
+  );
 }

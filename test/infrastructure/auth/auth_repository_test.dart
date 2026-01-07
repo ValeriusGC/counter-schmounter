@@ -26,6 +26,7 @@ void main() {
       test('successfully signs up user when user is returned', () async {
         // Arrange
         final mockUser = MockUser();
+        when(() => mockUser.id).thenReturn('test-user-id');
         final response = AuthResponse(
           user: mockUser,
           session: null,
@@ -114,6 +115,7 @@ void main() {
       test('handles empty email', () async {
         // Arrange
         final mockUser = MockUser();
+        when(() => mockUser.id).thenReturn('test-user-id');
         final response = AuthResponse(
           user: mockUser,
           session: null,
@@ -165,6 +167,7 @@ void main() {
         // Arrange
         final longEmail = 'a' * 1000 + '@example.com';
         final mockUser = MockUser();
+        when(() => mockUser.id).thenReturn('test-user-id');
         final response = AuthResponse(
           user: mockUser,
           session: null,
@@ -196,6 +199,7 @@ void main() {
         // Arrange
         final longPassword = 'a' * 1000;
         final mockUser = MockUser();
+        when(() => mockUser.id).thenReturn('test-user-id');
         final response = AuthResponse(
           user: mockUser,
           session: null,
@@ -227,6 +231,7 @@ void main() {
         // Arrange
         final specialEmail = 'test+user@example.co.uk';
         final mockUser = MockUser();
+        when(() => mockUser.id).thenReturn('test-user-id');
         final response = AuthResponse(
           user: mockUser,
           session: null,
