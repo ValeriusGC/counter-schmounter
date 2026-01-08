@@ -1,14 +1,14 @@
 import 'package:mocktail/mocktail.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
-import 'package:supa_counter/src/application/auth/use_cases/sign_in_use_case.dart';
-import 'package:supa_counter/src/application/auth/use_cases/sign_out_use_case.dart';
-import 'package:supa_counter/src/application/auth/use_cases/sign_up_use_case.dart';
-import 'package:supa_counter/src/application/counter/use_cases/increment_counter_use_case.dart';
-import 'package:supa_counter/src/domain/auth/repositories/auth_repository.dart';
-import 'package:supa_counter/src/domain/counter/operations/increment_operation.dart';
-import 'package:supa_counter/src/domain/counter/repositories/local_op_log_repository.dart';
-import 'package:supa_counter/src/domain/shared/services/client_identity_service.dart';
+import 'package:counter_schmounter/src/application/auth/use_cases/sign_in_use_case.dart';
+import 'package:counter_schmounter/src/application/auth/use_cases/sign_out_use_case.dart';
+import 'package:counter_schmounter/src/application/auth/use_cases/sign_up_use_case.dart';
+import 'package:counter_schmounter/src/application/counter/use_cases/increment_counter_use_case.dart';
+import 'package:counter_schmounter/src/domain/auth/repositories/auth_repository.dart';
+import 'package:counter_schmounter/src/domain/counter/operations/increment_operation.dart';
+import 'package:counter_schmounter/src/domain/counter/repositories/local_op_log_repository.dart';
+import 'package:counter_schmounter/src/domain/shared/services/client_identity_service.dart';
 
 /// Mock for SupabaseClient
 class MockSupabaseClient extends Mock implements SupabaseClient {}

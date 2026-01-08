@@ -3,9 +3,9 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:supa_counter/src/infrastructure/auth/providers/auth_use_case_providers.dart';
-import 'package:supa_counter/src/presentation/auth/viewmodels/signup_viewmodel.dart';
-import 'package:supa_counter/src/presentation/shared/navigation/navigation_state.dart';
+import 'package:counter_schmounter/src/infrastructure/auth/providers/auth_use_case_providers.dart';
+import 'package:counter_schmounter/src/presentation/auth/viewmodels/signup_viewmodel.dart';
+import 'package:counter_schmounter/src/presentation/shared/navigation/navigation_state.dart';
 import '../../test_helpers/mocks.dart';
 import '../../test_helpers/test_providers.dart';
 

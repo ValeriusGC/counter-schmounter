@@ -2,8 +2,8 @@ import 'dart:developer' as developer;
 
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
-import 'package:supa_counter/src/domain/counter/utils/counter_aggregator.dart';
-import 'package:supa_counter/src/infrastructure/counter/providers/local_op_log_repository_provider.dart';
+import 'package:counter_schmounter/src/domain/counter/utils/counter_aggregator.dart';
+import 'package:counter_schmounter/src/infrastructure/counter/providers/local_op_log_repository_provider.dart';
 
 part 'counter_state_provider.g.dart';
 

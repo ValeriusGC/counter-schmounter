@@ -1,7 +1,7 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
-import 'package:supa_counter/src/infrastructure/auth/providers/auth_use_case_providers.dart';
-import 'package:supa_counter/src/presentation/shared/navigation/navigation_state.dart';
+import 'package:counter_schmounter/src/infrastructure/auth/providers/auth_use_case_providers.dart';
+import 'package:counter_schmounter/src/presentation/shared/navigation/navigation_state.dart';
 
 part 'login_viewmodel.g.dart';
 

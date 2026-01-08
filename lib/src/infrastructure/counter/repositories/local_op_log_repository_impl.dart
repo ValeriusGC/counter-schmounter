@@ -3,11 +3,11 @@ import 'dart:developer' as developer;
 
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:supa_counter/src/domain/counter/operations/counter_operation.dart';
-import 'package:supa_counter/src/domain/counter/operations/increment_operation.dart';
-import 'package:supa_counter/src/domain/counter/repositories/local_op_log_repository.dart';
-import 'package:supa_counter/src/infrastructure/shared/storage/storage_migration.dart';
-import 'package:supa_counter/src/infrastructure/shared/storage/storage_schema_version.dart';
+import 'package:counter_schmounter/src/domain/counter/operations/counter_operation.dart';
+import 'package:counter_schmounter/src/domain/counter/operations/increment_operation.dart';
+import 'package:counter_schmounter/src/domain/counter/repositories/local_op_log_repository.dart';
+import 'package:counter_schmounter/src/infrastructure/shared/storage/storage_migration.dart';
+import 'package:counter_schmounter/src/infrastructure/shared/storage/storage_schema_version.dart';
 
 /// Максимальное количество операций в op-log.
 ///

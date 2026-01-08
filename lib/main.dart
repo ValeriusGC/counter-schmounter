@@ -5,9 +5,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import 'package:supa_counter/src/app.dart';
-import 'package:supa_counter/src/infrastructure/shared/providers/client_identity_service_provider.dart';
-import 'package:supa_counter/src/infrastructure/shared/services/client_identity_service_impl.dart';
+import 'package:counter_schmounter/src/app.dart';
+import 'package:counter_schmounter/src/infrastructure/shared/providers/client_identity_service_provider.dart';
+import 'package:counter_schmounter/src/infrastructure/shared/services/client_identity_service_impl.dart';
 
 /// Точка входа в приложение.
 ///

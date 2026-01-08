@@ -1,6 +1,6 @@
 import 'dart:developer' as developer;
 
-import 'package:supa_counter/src/domain/auth/repositories/auth_repository.dart';
+import 'package:counter_schmounter/src/domain/auth/repositories/auth_repository.dart';
 
 /// Use case для регистрации нового пользователя.
 ///

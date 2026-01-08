@@ -3,9 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import 'package:supa_counter/src/infrastructure/auth/providers/auth_state_listenable_provider.dart';
-import 'package:supa_counter/src/infrastructure/counter/providers/counter_state_provider.dart';
-import 'package:supa_counter/src/presentation/counter/viewmodels/counter_viewmodel.dart';
+import 'package:counter_schmounter/src/infrastructure/auth/providers/auth_state_listenable_provider.dart';
+import 'package:counter_schmounter/src/infrastructure/counter/providers/counter_state_provider.dart';
+import 'package:counter_schmounter/src/presentation/counter/viewmodels/counter_viewmodel.dart';
 
 import 'package:counter_schmounter/src/core/src/extensions/string_extensions.dart';
 
@@ -52,7 +52,7 @@ class CounterScreen extends ConsumerWidget {
                         height: 16,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
-                  : Text('Sign out'.hardcoded),
+                    : Text('Sign out'.hardcoded),
               ),
               loading: () => const SizedBox(
                 width: 16,
@@ -73,7 +73,7 @@ class CounterScreen extends ConsumerWidget {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: <Widget>[
-            Text('You have pushed the button this many times:'.hardcoded),
+                  Text('You have pushed the button this many times:'.hardcoded),
                   // Отображаем текущее значение счетчика крупным шрифтом
                   Text(
                     '$counter',

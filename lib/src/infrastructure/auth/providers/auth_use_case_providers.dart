@@ -1,9 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:supa_counter/src/application/auth/use_cases/sign_in_use_case.dart';
-import 'package:supa_counter/src/application/auth/use_cases/sign_out_use_case.dart';
-import 'package:supa_counter/src/application/auth/use_cases/sign_up_use_case.dart';
-import 'package:supa_counter/src/infrastructure/auth/providers/auth_repository_provider.dart';
+import 'package:counter_schmounter/src/application/auth/use_cases/sign_in_use_case.dart';
+import 'package:counter_schmounter/src/application/auth/use_cases/sign_out_use_case.dart';
+import 'package:counter_schmounter/src/application/auth/use_cases/sign_up_use_case.dart';
+import 'package:counter_schmounter/src/infrastructure/auth/providers/auth_repository_provider.dart';
 
 /// Провайдер для [SignInUseCase].
 ///

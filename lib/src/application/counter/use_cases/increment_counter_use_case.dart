@@ -2,9 +2,9 @@ import 'dart:developer' as developer;
 
 import 'package:uuid/uuid.dart';
 
-import 'package:supa_counter/src/domain/counter/operations/increment_operation.dart';
-import 'package:supa_counter/src/domain/counter/repositories/local_op_log_repository.dart';
-import 'package:supa_counter/src/domain/shared/services/client_identity_service.dart';
+import 'package:counter_schmounter/src/domain/counter/operations/increment_operation.dart';
+import 'package:counter_schmounter/src/domain/counter/repositories/local_op_log_repository.dart';
+import 'package:counter_schmounter/src/domain/shared/services/client_identity_service.dart';
 
 /// Use case для увеличения счетчика.
 ///

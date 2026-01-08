@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:supa_counter/src/application/counter/use_cases/increment_counter_use_case.dart';
-import 'package:supa_counter/src/domain/counter/operations/increment_operation.dart';
+import 'package:counter_schmounter/src/application/counter/use_cases/increment_counter_use_case.dart';
+import 'package:counter_schmounter/src/domain/counter/operations/increment_operation.dart';
 import '../../test_helpers/mocks.dart';
 
 void main() {

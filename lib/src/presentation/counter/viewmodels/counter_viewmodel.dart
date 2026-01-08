@@ -2,12 +2,12 @@ import 'dart:developer' as developer;
 
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
-import 'package:supa_counter/src/infrastructure/auth/providers/auth_state_listenable_provider.dart';
-import 'package:supa_counter/src/infrastructure/auth/providers/auth_use_case_providers.dart';
-import 'package:supa_counter/src/infrastructure/auth/providers/supabase_client_provider.dart';
-import 'package:supa_counter/src/infrastructure/counter/providers/counter_state_provider.dart';
-import 'package:supa_counter/src/infrastructure/counter/providers/increment_counter_use_case_provider.dart';
-import 'package:supa_counter/src/presentation/shared/navigation/navigation_state.dart';
+import 'package:counter_schmounter/src/infrastructure/auth/providers/auth_state_listenable_provider.dart';
+import 'package:counter_schmounter/src/infrastructure/auth/providers/auth_use_case_providers.dart';
+import 'package:counter_schmounter/src/infrastructure/auth/providers/supabase_client_provider.dart';
+import 'package:counter_schmounter/src/infrastructure/counter/providers/counter_state_provider.dart';
+import 'package:counter_schmounter/src/infrastructure/counter/providers/increment_counter_use_case_provider.dart';
+import 'package:counter_schmounter/src/presentation/shared/navigation/navigation_state.dart';
 
 part 'counter_viewmodel.g.dart';
 

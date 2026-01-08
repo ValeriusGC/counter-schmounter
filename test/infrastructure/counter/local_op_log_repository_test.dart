@@ -1,10 +1,10 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
-import 'package:supa_counter/src/domain/counter/operations/increment_operation.dart';
-import 'package:supa_counter/src/domain/counter/utils/counter_aggregator.dart';
-import 'package:supa_counter/src/infrastructure/counter/repositories/local_op_log_repository_impl.dart';
-import 'package:supa_counter/src/infrastructure/shared/storage/storage_schema_version.dart';
+import 'package:counter_schmounter/src/domain/counter/operations/increment_operation.dart';
+import 'package:counter_schmounter/src/domain/counter/utils/counter_aggregator.dart';
+import 'package:counter_schmounter/src/infrastructure/counter/repositories/local_op_log_repository_impl.dart';
+import 'package:counter_schmounter/src/infrastructure/shared/storage/storage_schema_version.dart';
 
 void main() {
   late SharedPreferences prefs;

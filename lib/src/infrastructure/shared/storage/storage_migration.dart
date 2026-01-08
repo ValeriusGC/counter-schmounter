@@ -2,7 +2,7 @@ import 'dart:developer' as developer;
 
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:supa_counter/src/infrastructure/shared/storage/storage_schema_version.dart';
+import 'package:counter_schmounter/src/infrastructure/shared/storage/storage_schema_version.dart';
 
 /// Класс для управления миграциями схемы хранилища.
 ///

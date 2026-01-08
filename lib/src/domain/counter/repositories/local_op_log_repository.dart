@@ -1,4 +1,4 @@
-import 'package:supa_counter/src/domain/counter/operations/counter_operation.dart';
+import 'package:counter_schmounter/src/domain/counter/operations/counter_operation.dart';
 
 /// Репозиторий для локального хранения операций счетчика (op-log).
 ///

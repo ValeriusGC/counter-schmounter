@@ -4,10 +4,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:uuid/uuid.dart';
-import 'package:supa_counter/src/domain/counter/operations/counter_operation.dart';
-import 'package:supa_counter/src/domain/counter/operations/increment_operation.dart';
-import 'package:supa_counter/src/presentation/counter/viewmodels/counter_viewmodel.dart';
-import 'package:supa_counter/src/presentation/shared/navigation/navigation_state.dart';
+import 'package:counter_schmounter/src/domain/counter/operations/counter_operation.dart';
+import 'package:counter_schmounter/src/domain/counter/operations/increment_operation.dart';
+import 'package:counter_schmounter/src/presentation/counter/viewmodels/counter_viewmodel.dart';
+import 'package:counter_schmounter/src/presentation/shared/navigation/navigation_state.dart';
 import '../../test_helpers/mocks.dart';
 import '../../test_helpers/test_providers.dart';
 
