@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:counter_schmounter/src/infrastructure/auth/providers/auth_state_listenable_provider.dart';
+import 'package:counter_schmounter/src/infrastructure/counter/providers/counter_state_provider.dart';
 import 'package:counter_schmounter/src/presentation/counter/viewmodels/counter_viewmodel.dart';
 
 import 'package:counter_schmounter/src/core/src/extensions/string_extensions.dart';
@@ -22,7 +23,7 @@ class CounterScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final state = ref.watch(counterViewModelProvider);
+    final stateAsync = ref.watch(counterViewModelProvider);
     final viewModel = ref.read(counterViewModelProvider.notifier);
     final isAuthenticated = ref
         .watch(authStateListenableProvider)
@@ -40,36 +41,62 @@ class CounterScreen extends ConsumerWidget {
             ),
           // Кнопка выхода из системы с индикатором загрузки (только для авторизованных)
           if (isAuthenticated)
-            TextButton(
-              onPressed: state.isSigningOut ? null : () => viewModel.signOut(),
-              child: state.isSigningOut
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : Text('Sign out'.hardcoded),
+            stateAsync.when(
+              data: (state) => TextButton(
+                onPressed: state.isSigningOut
+                    ? null
+                    : () => viewModel.signOut(),
+                child: state.isSigningOut
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : Text('Sign out'.hardcoded),
+              ),
+              loading: () => const SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+              error: (_, _) => const Text('Error'),
             ),
           const SizedBox(width: 8),
         ],
       ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            Text('You have pushed the button this many times:'.hardcoded),
-            // Отображаем текущее значение счетчика крупным шрифтом
-            Text(
-              '${state.counter}',
-              style: Theme.of(context).textTheme.headlineMedium,
+      body: stateAsync.when(
+        data: (_) {
+          // Читаем значение счетчика из counterStateProvider
+          final counterAsync = ref.watch(counterStateProvider);
+          return counterAsync.when(
+            data: (counter) => Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: <Widget>[
+                  Text('You have pushed the button this many times:'.hardcoded),
+                  // Отображаем текущее значение счетчика крупным шрифтом
+                  Text(
+                    '$counter',
+                    style: Theme.of(context).textTheme.headlineMedium,
+                  ),
+                ],
+              ),
             ),
-          ],
-        ),
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (error, stackTrace) => Center(child: Text('Error: $error')),
+          );
+        },
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (error, stackTrace) => Center(child: Text('Error: $error')),
       ),
       // Кнопка для увеличения счетчика
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => viewModel.incrementCounter(),
-        child: const Icon(Icons.add),
+      floatingActionButton: stateAsync.when(
+        data: (_) => FloatingActionButton(
+          onPressed: () => viewModel.incrementCounter(),
+          child: const Icon(Icons.add),
+        ),
+        loading: () => null,
+        error: (_, _) => null,
       ),
     );
   }
