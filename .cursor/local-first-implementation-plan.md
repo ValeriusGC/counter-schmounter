@@ -1,6 +1,6 @@
 # План реализации Local-first Baseline
 
-**Последнее обновление:** 2026-01-01 12:20:15
+**Последнее обновление:** 2026-01-11 12:20:15
 
 Детальный план реализации local-first baseline с optional auth для проекта `supa_counter`. Документ основан на [critical-path-1.md](critical-path-1.md) и учитывает требования по миграциям данных через SharedPreferences. Включает все правки из [local-first-implementation-plan-patch-list.md](local-first-implementation-plan-patch-list.md).
 
