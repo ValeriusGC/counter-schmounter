@@ -1,7 +1,7 @@
-import 'package:supa_counter/src/domain/counter/operations/counter_operation.dart';
-import 'package:supa_counter/src/domain/counter/operations/increment_operation.dart';
-import 'package:supa_counter/src/domain/counter/repositories/remote_op_log_repository.dart';
-import 'package:supa_counter/src/infrastructure/shared/logging/app_logger.dart';
+import 'package:counter_schmounter/src/domain/counter/operations/counter_operation.dart';
+import 'package:counter_schmounter/src/domain/counter/operations/increment_operation.dart';
+import 'package:counter_schmounter/src/domain/counter/repositories/remote_op_log_repository.dart';
+import 'package:counter_schmounter/src/infrastructure/shared/logging/app_logger.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 /// Реализация [RemoteOpLogRepository] через Supabase PostgREST.
