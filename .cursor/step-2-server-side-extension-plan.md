@@ -1,5 +1,8 @@
 # Server-side Extension (Realtime + Sync) поверх baseline — План с чеклистами
 
+> Статус: документ предназначен для исполнения как пошаговый план. Все пункты — бинарно проверяемые (done / not done).
+>
+> Важно: на этом этапе мы сознательно строим **минимально достаточный протокол**, без snapshot’ов и без оптимизаций. Любая «красота» — позже, после прохождения сценариев.
 > Контекст: baseline local-first (optional auth + client_id + local op-log + aggregated state) уже реализован.
 >
 > Цель следующего этапа: добавить **Server-side слой** так, чтобы:
@@ -18,8 +21,71 @@
 * [ ] **Realtime не источник истины**: события могут теряться; корректность обеспечивает Sync.
 * [ ] **Идемпотентность операций**: повторное применение/доставка не меняют результат сверх ожидаемого.
 * [ ] **Наблюдаемость обязательна**: логи содержат `client_id`, `op_id`, `entity_id`, `user_id?`.
+* [ ] Domain/Application не зависят от Supabase/Flutter.
+---
+
+## Зафиксированные архитектурные решения (обязательно)
+
+### 1. RemoteOpLogRepository (уточнение контракта)
+
+- [ ] Фильтрация по `entity_id` обязательна.
+- [ ] Сортировка: `created_at ASC`.
+- [ ] Граница выборки: `created_at > last_synced_at`.
+- [ ] При невалидной записи:
+  - [ ] запись логируется,
+  - [ ] запись пропускается,
+  - [ ] sync не падает целиком.
+- [ ] Все поля (`op_id`, `client_id`, `created_at`, `type`) валидируются явно.
+
+### 2. Маркеры Sync / Export
+
+- [ ] Используем **два маркера**:
+  - `last_synced_at`
+  - `last_exported_at`
+- [ ] Хранятся в SharedPreferences.
+- [ ] Ключи:
+  - `sync.last_synced_at`
+  - `sync.last_exported_at`
+- [ ] Подлежат schema-version миграциям.
+
+### 3. Realtime поведение (жёсткая фиксация)
+
+- [ ] Подписка только на `INSERT` в `counter_operations`.
+- [ ] Payload realtime **никогда не применяется напрямую**.
+- [ ] Любой realtime-сигнал → `needSync = true`.
+- [ ] Sync запускается с debounce/throttle.
+- [ ] Realtime может быть полностью выключен без потери корректности.
 
 ---
+
+## Порядок внедрения (строго)
+
+1. Server Op-Log (read-only)
+2. Initial Sync (pull)
+3. Realtime (signal only)
+4. Export Local Ops (push)
+
+---
+
+## Стоп-критерии
+
+- [ ] Login/logout меняет локальное состояние.
+- [ ] Повторный sync увеличивает счётчик.
+- [ ] Без auth приложение не работает.
+- [ ] Невозможно восстановить причину по логам.
+
+---
+
+## Итоговая готовность
+
+- [ ] Local-only полностью работает.
+- [ ] Login включает sync корректно.
+- [ ] Realtime — ускоритель, не костыль.
+- [ ] Export идемпотентен.
+- [ ] Все сценарии воспроизводимы.
+
+---
+
 
 ## Термины (фиксация)
 
@@ -53,54 +119,51 @@
 
 ### Таблица
 
-* [ ] Создать таблицу `counter_operations`.
-* [ ] Поля:
+* [x] Создать таблицу `counter_operations`.
+* [x] Поля:
 
-    * [ ] `op_id uuid primary key`
-    * [ ] `user_id uuid not null` (владельцем может быть только авторизованный пользователь)
-    * [ ] `entity_id text not null` (для стенда константа, напр. `default_counter`)
-    * [ ] `type text not null` (для стенда: `increment`)
-    * [ ] `client_id text not null`
-    * [ ] `created_at timestamptz not null default now()`
-* [ ] Индексы:
+    * [x] `op_id uuid primary key`
+    * [x] `user_id uuid not null` (владельцем может быть только авторизованный пользователь)
+    * [x] `entity_id text not null` (для стенда константа, напр. `default_counter`)
+    * [x] `type text not null` (для стенда: `increment`)
+    * [x] `client_id text not null`
+    * [x] `created_at timestamptz not null default now()`
+* [x] Индексы:
 
-    * [ ] `(user_id, created_at)`
-    * [ ] `(user_id, entity_id, created_at)` (если будем фильтровать по entity)
+    * [x] `(user_id, created_at)`
+    * [x] `(user_id, entity_id, created_at)` (если будем фильтровать по entity)
 
 ### RLS (Row Level Security)
 
-* [ ] Включить RLS на таблице.
-* [ ] Политика SELECT:
-
-    * [ ] `auth.uid() = user_id`
-* [ ] Политика INSERT (понадобится в Шаге 11, но можно подготовить заранее):
-
-    * [ ] `auth.uid() = user_id`
-* [ ] Запретить UPDATE/DELETE (на этом этапе):
-
-    * [ ] Убедиться, что нет разрешающих политик.
+* [x] Включить RLS на таблице.
+* [x] Политика SELECT:
+    * [x] `auth.uid() = user_id`
+* [x] Политика INSERT (понадобится в Шаге 11, но можно подготовить заранее):
+    * [x] `auth.uid() = user_id`
+* [x] Запретить UPDATE/DELETE (на этом этапе):
+    * [x] Убедиться, что нет разрешающих политик.
 
 ### Проверка
 
-* [ ] Через Supabase SQL Editor вставить тестовую строку (временно) и убедиться, что SELECT под пользователем возвращает только свои строки.
+* [x] Через Supabase SQL Editor вставить тестовую строку (временно) и убедиться, что SELECT под пользователем возвращает только свои строки.
 
 ## Чеклист: Flutter (read-only репозиторий)
 
 ### Domain
 
-* [ ] Добавить интерфейс `RemoteOpLogRepository` (только чтение).
-* [ ] Убедиться, что domain не импортирует supabase/flutter.
+* [x] Добавить интерфейс `RemoteOpLogRepository` (только чтение).
+* [x] Убедиться, что domain не импортирует supabase/flutter.
 
 ### Infrastructure
 
-* [ ] Реализация `RemoteOpLogRepositoryImpl` через `SupabaseClient`.
-* [ ] Запрос: `select` по `user_id`, `order created_at asc`.
-* [ ] Фильтрация "после" по маркеру (на первом этапе можно по `created_at > since`).
-* [ ] Десериализация в доменные операции.
+* [x] Реализация `RemoteOpLogRepositoryImpl` через `SupabaseClient`.
+* [x] Запрос: `select` по `user_id`, `order created_at asc`.
+* [x] Фильтрация "после" по маркеру (на первом этапе можно по `created_at > since`).
+* [x] Десериализация в доменные операции.
 
 ### Providers
 
-* [ ] Провайдер `remoteOpLogRepositoryProvider` (codegen `@riverpod`).
+* [x] Провайдер `remoteOpLogRepositoryProvider` (codegen `@riverpod`).
 
 ### Тесты
 
