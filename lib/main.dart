@@ -25,6 +25,7 @@ import 'package:counter_schmounter/src/infrastructure/shared/services/client_ide
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // Baseline standard: use SU / SAK (short form) for Supabase credentials
   // Получаем конфигурацию Supabase из переменных окружения
   const supabaseUrl = String.fromEnvironment('SU');
   const supabaseAnonKey = String.fromEnvironment('SAK');
@@ -39,8 +40,8 @@ Future<void> main() async {
     // В продакшене здесь можно выбросить исключение для предотвращения
     // запуска приложения с неполной конфигурацией
     throw StateError(
-      'Missing SUPABASE_URL / SUPABASE_ANON_KEY. '
-      'Run with --dart-define=SU=... --dart-define=SAK=...',
+      'Missing SU / SAK. '
+      'Run with --dart-define=SU=https://your-project.supabase.co --dart-define=SAK=your-anon-key',
     );
   }
 

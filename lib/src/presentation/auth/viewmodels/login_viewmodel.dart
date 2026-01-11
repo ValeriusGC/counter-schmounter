@@ -1,6 +1,6 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
-import 'package:counter_schmounter/src/application/auth/use_cases/sign_in_use_case.dart';
+import 'package:counter_schmounter/src/infrastructure/auth/providers/auth_use_case_providers.dart';
 import 'package:counter_schmounter/src/presentation/shared/navigation/navigation_state.dart';
 
 part 'login_viewmodel.g.dart';
@@ -99,26 +99,16 @@ class LoginViewModel extends _$LoginViewModel {
       );
 
       // Успешный вход - устанавливаем навигацию на главный экран
-      try {
-        state = state.copyWith(
-          signInAsyncValue: const AsyncValue.data(null),
-          navigationAction: NavigationAction.navigateToCounter,
-        );
-      } catch (e) {
-        // Provider was disposed, ignore state update
-        return;
-      }
+      state = state.copyWith(
+        signInAsyncValue: const AsyncValue.data(null),
+        navigationAction: NavigationAction.navigateToCounter,
+      );
     } catch (error, stackTrace) {
       // Ошибка входа - сохраняем информацию об ошибке
-      try {
-        state = state.copyWith(
-          signInAsyncValue: AsyncValue.error(error, stackTrace),
-          navigationAction: NavigationAction.none,
-        );
-      } catch (e) {
-        // Provider was disposed, ignore state update
-        return;
-      }
+      state = state.copyWith(
+        signInAsyncValue: AsyncValue.error(error, stackTrace),
+        navigationAction: NavigationAction.none,
+      );
     }
   }
 

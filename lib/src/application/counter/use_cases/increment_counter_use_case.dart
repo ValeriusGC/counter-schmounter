@@ -1,38 +1,42 @@
 import 'dart:developer' as developer;
 
-import 'package:counter_schmounter/src/domain/counter/operations/increment_operation.dart';
-import 'package:counter_schmounter/src/domain/shared/services/client_identity_service.dart';
-import 'package:counter_schmounter/src/infrastructure/shared/providers/client_identity_service_provider.dart';
-import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:uuid/uuid.dart';
 
-part 'increment_counter_use_case.g.dart';
+import 'package:counter_schmounter/src/domain/counter/operations/increment_operation.dart';
+import 'package:counter_schmounter/src/domain/counter/repositories/local_op_log_repository.dart';
+import 'package:counter_schmounter/src/domain/shared/services/client_identity_service.dart';
 
-/// Use case для создания операции увеличения счетчика.
+/// Use case для увеличения счетчика.
 ///
-/// Инкапсулирует логику создания [IncrementOperation] с правильными метаданными:
-/// - генерирует уникальный `op_id` (UUID v4)
-/// - устанавливает `created_at` (текущее время)
-/// - использует `client_id` из [ClientIdentityService]
+/// Инкапсулирует полную логику увеличения счетчика:
+/// - создает [IncrementOperation] с правильными метаданными (op_id, client_id, created_at)
+/// - сохраняет операцию в [LocalOpLogRepository]
 ///
-/// Не содержит зависимостей от UI или инфраструктуры (кроме ClientIdentityService).
+/// Не содержит зависимостей от UI слоя.
 class IncrementCounterUseCase {
-  /// Создает экземпляр [IncrementCounterUseCase] с указанным сервисом идентификации клиента.
-  IncrementCounterUseCase(this._clientIdentityService);
+  /// Создает экземпляр [IncrementCounterUseCase] с указанными зависимостями.
+  IncrementCounterUseCase(
+    this._clientIdentityService,
+    this._localOpLogRepository,
+  );
 
   /// Сервис для получения идентификатора клиента
   final ClientIdentityService _clientIdentityService;
 
-  /// Выполняет создание операции увеличения счетчика.
+  /// Репозиторий для сохранения операций
+  final LocalOpLogRepository _localOpLogRepository;
+
+  /// Выполняет увеличение счетчика.
   ///
-  /// Генерирует новую [IncrementOperation] с уникальным идентификатором,
-  /// текущим временем и идентификатором клиента.
+  /// Создает новую [IncrementOperation] с уникальным идентификатором,
+  /// текущим временем и идентификатором клиента, затем сохраняет её
+  /// в [LocalOpLogRepository].
   ///
   /// Возвращает созданную операцию.
-  IncrementOperation execute() {
+  Future<IncrementOperation> execute() async {
     final clientId = _clientIdentityService.clientId;
     final opId = const Uuid().v4();
-    final createdAt = DateTime.now();
+    final createdAt = DateTime.now().toUtc();
 
     final operation = IncrementOperation(
       opId: opId,
@@ -62,15 +66,17 @@ class IncrementCounterUseCase {
       level: 600, // FINER level
     );
 
+    // Сохраняем операцию в repository
+    await _localOpLogRepository.append(operation);
+
+    developer.log(
+      '✅ Increment operation saved to repository',
+      name: 'IncrementCounterUseCase',
+      error: null,
+      stackTrace: null,
+      level: 700, // FINE level
+    );
+
     return operation;
   }
-}
-
-/// Провайдер для [IncrementCounterUseCase].
-///
-/// Использует [clientIdentityServiceProvider] для получения сервиса идентификации клиента.
-@riverpod
-IncrementCounterUseCase incrementCounterUseCase(Ref ref) {
-  final clientIdentityService = ref.watch(clientIdentityServiceProvider);
-  return IncrementCounterUseCase(clientIdentityService);
 }
