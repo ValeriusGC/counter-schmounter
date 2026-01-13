@@ -10,6 +10,9 @@ abstract final class AppLogComponent {
   /// Общие логи синхронизации.
   static const String sync = 'SYNC';
 
+  /// Общие логи синхронизации.
+  static const String state = 'STATE';
+
   /// Логи realtime (следующий этап).
   static const String realtime = 'REALTIME';
 
@@ -18,6 +21,9 @@ abstract final class AppLogComponent {
 
   /// Логи локального op-log.
   static const String localOpLog = 'LOCAL_OPLOG';
+
+  /// Логи локального op-log.
+  static const String ui = 'UI';
 }
 
 /// Минималистичный логгер.

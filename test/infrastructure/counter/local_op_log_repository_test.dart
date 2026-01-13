@@ -13,7 +13,7 @@ void main() {
   setUp(() async {
     SharedPreferences.setMockInitialValues({});
     prefs = await SharedPreferences.getInstance();
-    repository = LocalOpLogRepositoryImpl(prefs);
+    repository = LocalOpLogRepositoryImpl(prefs, scope: 'A');
   });
 
   tearDown(() async {
@@ -45,7 +45,10 @@ void main() {
         // Arrange - SharedPreferences без версии (версия = null, что означает 0)
         SharedPreferences.setMockInitialValues({});
         final prefsWithoutVersion = await SharedPreferences.getInstance();
-        final repoWithoutVersion = LocalOpLogRepositoryImpl(prefsWithoutVersion);
+        final repoWithoutVersion = LocalOpLogRepositoryImpl(
+          prefsWithoutVersion,
+          scope: 'a',
+        );
 
         // Act
         await repoWithoutVersion.initialize();
@@ -59,10 +62,14 @@ void main() {
       test('does not migrate when version is already current', () async {
         // Arrange - устанавливаем текущую версию вручную
         SharedPreferences.setMockInitialValues({
-          'storage_schema_version': StorageSchemaVersion.kCurrentStorageSchemaVersion,
+          'storage_schema_version':
+              StorageSchemaVersion.kCurrentStorageSchemaVersion,
         });
         final prefsWithVersion = await SharedPreferences.getInstance();
-        final repoWithVersion = LocalOpLogRepositoryImpl(prefsWithVersion);
+        final repoWithVersion = LocalOpLogRepositoryImpl(
+          prefsWithVersion,
+          scope: 'A',
+        );
 
         // Act
         await repoWithVersion.initialize();
@@ -75,10 +82,14 @@ void main() {
       test('migrates from old version to current version', () async {
         // Arrange - устанавливаем старую версию (V1, но можно было бы и 0)
         SharedPreferences.setMockInitialValues({
-          'storage_schema_version': StorageSchemaVersion.kStorageSchemaVersionV1 - 1, // 0 или меньше
+          'storage_schema_version':
+              StorageSchemaVersion.kStorageSchemaVersionV1 - 1, // 0 или меньше
         });
         final prefsWithOldVersion = await SharedPreferences.getInstance();
-        final repoWithOldVersion = LocalOpLogRepositoryImpl(prefsWithOldVersion);
+        final repoWithOldVersion = LocalOpLogRepositoryImpl(
+          prefsWithOldVersion,
+          scope: 'A',
+        );
 
         // Act
         await repoWithOldVersion.initialize();
@@ -90,7 +101,7 @@ void main() {
     });
 
     group('append', () {
-      test('throws StateError if not initialized', () async {
+      test('auto-initializes repository on append', () async {
         // Arrange
         final operation = IncrementOperation(
           opId: const Uuid().v4(),
@@ -98,11 +109,14 @@ void main() {
           createdAt: DateTime.now(),
         );
 
-        // Act & Assert
-        expect(
-          () => repository.append(operation),
-          throwsA(isA<StateError>()),
-        );
+        // Act
+        await repository.append(operation);
+
+        // Assert
+        final operations = await repository.getAll();
+        expect(operations.length, 1);
+        expect(operations.first.opId, operation.opId);
+
       });
 
       test('appends operation to repository', () async {
@@ -173,13 +187,15 @@ void main() {
     });
 
     group('getAll', () {
-      test('throws StateError if not initialized', () {
-        // Act & Assert
-        expect(
-          () => repository.getAll(),
-          throwsA(isA<StateError>()),
-        );
+
+      test('auto-initializes repository and returns empty list when not initialized', () async {
+        // Act
+        final operations = await repository.getAll();
+
+        // Assert
+        expect(operations, isEmpty);
       });
+
 
       test('returns empty list when no operations', () async {
         // Arrange
@@ -227,7 +243,7 @@ void main() {
         await repository.append(operation);
 
         // Act - создаем новый экземпляр
-        final newRepository = LocalOpLogRepositoryImpl(prefs);
+        final newRepository = LocalOpLogRepositoryImpl(prefs, scope: 'A');
         await newRepository.initialize();
         final loaded = await newRepository.getAll();
 
@@ -273,47 +289,50 @@ void main() {
         expect(loaded3.length, 5);
       });
 
-      test('replay operations after repository restart gives same result', () async {
-        // Arrange - сохраняем операции в первом экземпляре
-        await repository.initialize();
-        final operations = List.generate(
-          3,
-          (index) => IncrementOperation(
-            opId: const Uuid().v4(),
-            clientId: 'test-client',
-            createdAt: DateTime.now().add(Duration(seconds: index)),
-          ),
-        );
+      test(
+        'replay operations after repository restart gives same result',
+        () async {
+          // Arrange - сохраняем операции в первом экземпляре
+          await repository.initialize();
+          final operations = List.generate(
+            3,
+            (index) => IncrementOperation(
+              opId: const Uuid().v4(),
+              clientId: 'test-client',
+              createdAt: DateTime.now().add(Duration(seconds: index)),
+            ),
+          );
 
-        for (final op in operations) {
-          await repository.append(op);
-        }
+          for (final op in operations) {
+            await repository.append(op);
+          }
 
-        // Вычисляем состояние до "перезапуска"
-        final operationsBefore = await repository.getAll();
-        final counterBefore = CounterAggregator.compute(operationsBefore);
+          // Вычисляем состояние до "перезапуска"
+          final operationsBefore = await repository.getAll();
+          final counterBefore = CounterAggregator.compute(operationsBefore);
 
-        // Act - создаем новый экземпляр (симулируем перезапуск)
-        final newRepository = LocalOpLogRepositoryImpl(prefs);
-        await newRepository.initialize();
-        final operationsAfter = await newRepository.getAll();
-        final counterAfter = CounterAggregator.compute(operationsAfter);
+          // Act - создаем новый экземпляр (симулируем перезапуск)
+          final newRepository = LocalOpLogRepositoryImpl(prefs, scope: 'A');
+          await newRepository.initialize();
+          final operationsAfter = await newRepository.getAll();
+          final counterAfter = CounterAggregator.compute(operationsAfter);
 
-        // Применяем повторно
-        final counterAfter2 = CounterAggregator.compute(operationsAfter);
-        final counterAfter3 = CounterAggregator.compute(operationsAfter);
+          // Применяем повторно
+          final counterAfter2 = CounterAggregator.compute(operationsAfter);
+          final counterAfter3 = CounterAggregator.compute(operationsAfter);
 
-        // Assert - состояние восстанавливается корректно и повторные применения дают тот же результат
-        expect(counterBefore, 3);
-        expect(counterAfter, 3);
-        expect(counterAfter2, 3);
-        expect(counterAfter3, 3);
-        expect(counterBefore, equals(counterAfter));
-        expect(counterAfter, equals(counterAfter2));
-        expect(counterAfter2, equals(counterAfter3));
-        expect(operationsBefore.length, 3);
-        expect(operationsAfter.length, 3);
-      });
+          // Assert - состояние восстанавливается корректно и повторные применения дают тот же результат
+          expect(counterBefore, 3);
+          expect(counterAfter, 3);
+          expect(counterAfter2, 3);
+          expect(counterAfter3, 3);
+          expect(counterBefore, equals(counterAfter));
+          expect(counterAfter, equals(counterAfter2));
+          expect(counterAfter2, equals(counterAfter3));
+          expect(operationsBefore.length, 3);
+          expect(operationsAfter.length, 3);
+        },
+      );
     });
 
     group('clear', () {
@@ -365,4 +384,3 @@ void main() {
     });
   });
 }
-

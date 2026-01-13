@@ -1,6 +1,5 @@
-import 'dart:developer' as developer;
-
 import 'package:counter_schmounter/src/domain/auth/repositories/auth_repository.dart';
+import 'package:counter_schmounter/src/infrastructure/shared/logging/app_logger.dart';
 
 /// Use case для регистрации нового пользователя.
 ///
@@ -24,37 +23,24 @@ class SignUpUseCase {
     required String email,
     required String password,
   }) async {
-    developer.log(
-      '📝 Sign up initiated',
-      name: 'SignUpUseCase',
-      error: null,
-      stackTrace: null,
-      level: 800, // INFO level
-    );
-    developer.log(
-      '   Email: $email',
-      name: 'SignUpUseCase',
-      error: null,
-      stackTrace: null,
-      level: 700, // FINE level
+    AppLogger.info(
+      component: AppLogComponent.ui,
+      message: 'Sign up initiated',
+      context: <String, Object?>{'email': email},
     );
 
     try {
       await _repository.signUp(email: email, password: password);
-      developer.log(
-        '✅ Sign up successful',
-        name: 'SignUpUseCase',
-        error: null,
-        stackTrace: null,
-        level: 800, // INFO level
+      AppLogger.info(
+        component: AppLogComponent.ui,
+        message: 'Sign up successful',
       );
     } catch (error, stackTrace) {
-      developer.log(
-        '❌ Sign up failed',
-        name: 'SignUpUseCase',
+      AppLogger.error(
+        component: AppLogComponent.ui,
+        message: 'Sign up failed',
         error: error,
         stackTrace: stackTrace,
-        level: 1000, // SEVERE level
       );
       rethrow;
     }

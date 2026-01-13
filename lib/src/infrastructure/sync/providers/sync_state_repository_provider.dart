@@ -1,14 +1,13 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
-
-import 'package:counter_schmounter/src/domain/counter/repositories/local_op_log_repository.dart';
+import 'package:counter_schmounter/src/domain/sync/repositories/sync_state_repository.dart';
 import 'package:counter_schmounter/src/infrastructure/auth/providers/supabase_user_id_provider.dart';
-import 'package:counter_schmounter/src/infrastructure/counter/repositories/local_op_log_repository_impl.dart';
 import 'package:counter_schmounter/src/infrastructure/shared/logging/app_logger.dart';
 import 'package:counter_schmounter/src/infrastructure/shared/providers/client_identity_service_provider.dart';
+import 'package:counter_schmounter/src/infrastructure/sync/repositories/sync_state_repository_impl.dart';
 
-part 'local_op_log_repository_provider.g.dart';
+part 'sync_state_repository_provider.g.dart';
 
-/// Провайдер для [LocalOpLogRepository].
+/// Провайдер [SyncStateRepository].
 ///
 /// ВАЖНО (account-scope):
 /// - репозиторий создаётся с учётом текущего `user_id`
@@ -18,7 +17,7 @@ part 'local_op_log_repository_provider.g.dart';
 /// - `user:<user_id>` если авторизован
 /// - `anonymous` если нет авторизации
 @riverpod
-LocalOpLogRepository localOpLogRepository(Ref ref) {
+Future<SyncStateRepository> syncStateRepository(Ref ref) async {
   final prefs = ref.watch(sharedPreferencesProvider);
 
   final userIdAsync = ref.watch(supabaseUserIdProvider);
@@ -28,9 +27,9 @@ LocalOpLogRepository localOpLogRepository(Ref ref) {
 
   AppLogger.info(
     component: AppLogComponent.state,
-    message: 'LocalOpLogRepositoryProvider build.',
+    message: 'SyncStateRepositoryProvider build.',
     context: <String, Object?>{'scope': scope, 'user_id': userId},
   );
 
-  return LocalOpLogRepositoryImpl(prefs, scope: scope);
+  return SyncStateRepositoryImpl(sharedPreferences: prefs, scope: scope);
 }
