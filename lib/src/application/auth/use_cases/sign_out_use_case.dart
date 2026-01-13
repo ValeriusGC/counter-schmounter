@@ -1,6 +1,5 @@
-import 'dart:developer' as developer;
-
 import 'package:counter_schmounter/src/domain/auth/repositories/auth_repository.dart';
+import 'package:counter_schmounter/src/infrastructure/shared/logging/app_logger.dart';
 
 /// Use case для выхода пользователя из системы.
 ///
@@ -17,30 +16,23 @@ class SignOutUseCase {
   ///
   /// Выбрасывает исключение при ошибках сети или других проблемах.
   Future<void> execute() async {
-    developer.log(
-      '🚪 Sign out initiated',
-      name: 'SignOutUseCase',
-      error: null,
-      stackTrace: null,
-      level: 800, // INFO level
+    AppLogger.info(
+      component: AppLogComponent.ui,
+      message: 'Sign out initiated',
     );
 
     try {
       await _repository.signOut();
-      developer.log(
-        '✅ Sign out successful',
-        name: 'SignOutUseCase',
-        error: null,
-        stackTrace: null,
-        level: 800, // INFO level
+      AppLogger.info(
+        component: AppLogComponent.ui,
+        message: 'Sign out successful',
       );
     } catch (error, stackTrace) {
-      developer.log(
-        '❌ Sign out failed',
-        name: 'SignOutUseCase',
+      AppLogger.error(
+        component: AppLogComponent.ui,
+        message: 'Sign out failed',
         error: error,
         stackTrace: stackTrace,
-        level: 1000, // SEVERE level
       );
       rethrow;
     }

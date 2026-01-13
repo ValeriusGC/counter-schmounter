@@ -1,10 +1,9 @@
-import 'dart:developer' as developer;
-
 import 'package:uuid/uuid.dart';
 
 import 'package:counter_schmounter/src/domain/counter/operations/increment_operation.dart';
 import 'package:counter_schmounter/src/domain/counter/repositories/local_op_log_repository.dart';
 import 'package:counter_schmounter/src/domain/shared/services/client_identity_service.dart';
+import 'package:counter_schmounter/src/infrastructure/shared/logging/app_logger.dart';
 
 /// Use case для увеличения счетчика.
 ///
@@ -44,37 +43,19 @@ class IncrementCounterUseCase {
       createdAt: createdAt,
     );
 
-    developer.log(
-      '➕ Creating increment operation',
-      name: 'IncrementCounterUseCase',
-      error: null,
-      stackTrace: null,
-      level: 700, // FINE level
-    );
-    developer.log(
-      '   Operation ID: $opId',
-      name: 'IncrementCounterUseCase',
-      error: null,
-      stackTrace: null,
-      level: 600, // FINER level
-    );
-    developer.log(
-      '   Client ID: $clientId',
-      name: 'IncrementCounterUseCase',
-      error: null,
-      stackTrace: null,
-      level: 600, // FINER level
+    AppLogger.info(
+      component: AppLogComponent.localOpLog,
+      message: 'Creating increment operation',
+      context: <String, Object?>{'op_id': opId, 'client_id': clientId},
     );
 
     // Сохраняем операцию в repository
     await _localOpLogRepository.append(operation);
 
-    developer.log(
-      '✅ Increment operation saved to repository',
-      name: 'IncrementCounterUseCase',
-      error: null,
-      stackTrace: null,
-      level: 700, // FINE level
+    AppLogger.info(
+      component: AppLogComponent.localOpLog,
+      message: 'Increment operation saved to repository',
+      context: <String, Object?>{'op_id': opId},
     );
 
     return operation;

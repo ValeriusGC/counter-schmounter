@@ -1,7 +1,6 @@
-import 'dart:developer' as developer;
-
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:counter_schmounter/src/infrastructure/shared/logging/app_logger.dart';
 import 'package:counter_schmounter/src/infrastructure/shared/storage/storage_schema_version.dart';
 
 /// Класс для управления миграциями схемы хранилища.
@@ -29,12 +28,13 @@ class StorageMigration {
       return;
     }
 
-    developer.log(
-      '🔄 Starting storage migration: $fromVersion → $toVersion',
-      name: 'StorageMigration',
-      error: null,
-      stackTrace: null,
-      level: 800, // INFO level
+    AppLogger.info(
+      component: AppLogComponent.state,
+      message: 'Starting storage migration',
+      context: <String, Object?>{
+        'from_version': fromVersion,
+        'to_version': toVersion,
+      },
     );
 
     // Применяем миграции последовательно
@@ -45,12 +45,13 @@ class StorageMigration {
     // Обновляем версию схемы
     await prefs.setInt('storage_schema_version', toVersion);
 
-    developer.log(
-      '✅ Storage migration completed: $fromVersion → $toVersion',
-      name: 'StorageMigration',
-      error: null,
-      stackTrace: null,
-      level: 800, // INFO level
+    AppLogger.info(
+      component: AppLogComponent.state,
+      message: 'Storage migration completed',
+      context: <String, Object?>{
+        'from_version': fromVersion,
+        'to_version': toVersion,
+      },
     );
   }
 
@@ -65,12 +66,9 @@ class StorageMigration {
       case StorageSchemaVersion.kStorageSchemaVersionV1:
         // V1 - базовая версия, миграция не требуется
         // Просто создаем структуру, если её нет
-        developer.log(
-          '📦 Migrating to V1 (initial schema)',
-          name: 'StorageMigration',
-          error: null,
-          stackTrace: null,
-          level: 700, // FINE level
+        AppLogger.info(
+          component: AppLogComponent.state,
+          message: 'Migrating to V1 (initial schema)',
         );
         break;
       // В будущем здесь будут миграции для V2, V3 и т.д.

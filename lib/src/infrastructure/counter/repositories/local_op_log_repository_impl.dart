@@ -1,11 +1,11 @@
 import 'dart:convert';
-import 'dart:developer' as developer;
 
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:counter_schmounter/src/domain/counter/operations/counter_operation.dart';
 import 'package:counter_schmounter/src/domain/counter/operations/increment_operation.dart';
 import 'package:counter_schmounter/src/domain/counter/repositories/local_op_log_repository.dart';
+import 'package:counter_schmounter/src/infrastructure/shared/logging/app_logger.dart';
 import 'package:counter_schmounter/src/infrastructure/shared/storage/storage_migration.dart';
 import 'package:counter_schmounter/src/infrastructure/shared/storage/storage_schema_version.dart';
 
@@ -18,8 +18,15 @@ const int kMaxOperationsCount = 1000;
 /// Ключ для хранения версии схемы в SharedPreferences.
 const String _kSchemaVersionKey = 'storage_schema_version';
 
-/// Ключ для хранения операций счетчика в SharedPreferences.
-const String _kCounterOperationsKey = 'counter_operations';
+/// Базовый префикс ключа для хранения операций счетчика в SharedPreferences.
+///
+/// Фактический ключ формируется как:
+/// - `counter_operations::<scope>`
+///
+/// Где scope:
+/// - `user:<user_id>` для авторизованного пользователя
+/// - `anonymous` для неавторизованного режима
+const String _kCounterOperationsKeyBase = 'counter_operations';
 
 /// Инфраструктурная реализация [LocalOpLogRepository] через SharedPreferences.
 ///
@@ -28,11 +35,23 @@ const String _kCounterOperationsKey = 'counter_operations';
 /// - Дедупликацию операций по `op_id`
 /// - Ограничение роста op-log (удаление старых операций)
 /// - Миграции схемы данных
+///
+/// ВАЖНО (account-scope):
+/// - операции разных аккаунтов НЕ смешиваются
+/// - scope задаётся при создании репозитория
 class LocalOpLogRepositoryImpl implements LocalOpLogRepository {
   /// Создает экземпляр [LocalOpLogRepositoryImpl].
-  LocalOpLogRepositoryImpl(this._prefs);
+  ///
+  /// [scope] определяет namespace хранения данных.
+  /// Рекомендуемые значения:
+  /// - `user:<user_id>`
+  /// - `anonymous`
+  LocalOpLogRepositoryImpl(this._prefs, {required String scope})
+    : _scope = scope;
 
   final SharedPreferences _prefs;
+  final String _scope;
+
   bool _initialized = false;
 
   @override
@@ -41,12 +60,10 @@ class LocalOpLogRepositoryImpl implements LocalOpLogRepository {
       return;
     }
 
-    developer.log(
-      '📦 Initializing LocalOpLogRepository...',
-      name: 'LocalOpLogRepositoryImpl',
-      error: null,
-      stackTrace: null,
-      level: 800, // INFO level
+    AppLogger.info(
+      component: AppLogComponent.localOpLog,
+      message: 'Initializing LocalOpLogRepository',
+      context: <String, Object?>{'scope': _scope},
     );
 
     // Читаем текущую версию схемы (или 0, если не установлена)
@@ -62,21 +79,29 @@ class LocalOpLogRepositoryImpl implements LocalOpLogRepository {
 
     // Загружаем операции для проверки
     final operations = await getAll();
-    developer.log(
-      '✅ LocalOpLogRepository initialized: ${operations.length} operations loaded',
-      name: 'LocalOpLogRepositoryImpl',
-      error: null,
-      stackTrace: null,
-      level: 800, // INFO level
+    AppLogger.info(
+      component: AppLogComponent.localOpLog,
+      message: 'LocalOpLogRepository initialized',
+      context: <String, Object?>{
+        'scope': _scope,
+        'operations_count': operations.length,
+        'storage_key': _storageKey(),
+      },
     );
   }
 
   @override
   Future<void> append(CounterOperation operation) async {
     if (!_initialized) {
-      throw StateError(
-        'LocalOpLogRepository not initialized. Call initialize() first.',
+      AppLogger.info(
+        component: AppLogComponent.localOpLog,
+        message: 'LocalOpLogRepository auto-initialize on append.',
+        context: <String, Object?>{
+          'scope': _scope,
+          'storage_key': _storageKey(),
+        },
       );
+      await initialize();
     }
 
     // Загружаем существующие операции
@@ -84,12 +109,14 @@ class LocalOpLogRepositoryImpl implements LocalOpLogRepository {
 
     // Проверяем дедупликацию по op_id
     if (operations.any((op) => op.opId == operation.opId)) {
-      developer.log(
-        '⚠️ Operation with op_id ${operation.opId} already exists, skipping',
-        name: 'LocalOpLogRepositoryImpl',
-        error: null,
-        stackTrace: null,
-        level: 700, // FINE level
+      AppLogger.info(
+        component: AppLogComponent.localOpLog,
+        message: 'Operation with op_id already exists, skipping',
+        context: <String, Object?>{
+          'scope': _scope,
+          'storage_key': _storageKey(),
+          'op_id': operation.opId,
+        },
       );
       return;
     }
@@ -103,24 +130,35 @@ class LocalOpLogRepositoryImpl implements LocalOpLogRepository {
     // Сохраняем операции
     await _saveOperations(compactedOperations);
 
-    developer.log(
-      '➕ Operation appended: ${operation.opId} (total: ${compactedOperations.length})',
-      name: 'LocalOpLogRepositoryImpl',
-      error: null,
-      stackTrace: null,
-      level: 700, // FINE level
+    AppLogger.info(
+      component: AppLogComponent.localOpLog,
+      message: 'Operation appended',
+      context: <String, Object?>{
+        'scope': _scope,
+        'storage_key': _storageKey(),
+        'op_id': operation.opId,
+        'total_operations': compactedOperations.length,
+      },
     );
   }
 
   @override
   Future<List<CounterOperation>> getAll() async {
     if (!_initialized) {
-      throw StateError(
-        'LocalOpLogRepository not initialized. Call initialize() first.',
+      AppLogger.info(
+        component: AppLogComponent.localOpLog,
+        message: 'LocalOpLogRepository auto-initialize on getAll.',
+        context: <String, Object?>{
+          'scope': _scope,
+          'storage_key': _storageKey(),
+        },
       );
+      await initialize();
     }
 
-    final jsonString = _prefs.getString(_kCounterOperationsKey);
+    final key = _storageKey();
+
+    final jsonString = _prefs.getString(key);
     if (jsonString == null || jsonString.isEmpty) {
       return [];
     }
@@ -131,12 +169,12 @@ class LocalOpLogRepositoryImpl implements LocalOpLogRepository {
           .map((json) => _deserializeOperation(json as Map<String, dynamic>))
           .toList();
     } catch (e, stackTrace) {
-      developer.log(
-        '❌ Error deserializing operations: $e',
-        name: 'LocalOpLogRepositoryImpl',
+      AppLogger.error(
+        component: AppLogComponent.localOpLog,
+        message: 'Error deserializing operations',
         error: e,
         stackTrace: stackTrace,
-        level: 1000, // SEVERE level
+        context: <String, Object?>{'scope': _scope, 'storage_key': key},
       );
       // В случае ошибки возвращаем пустой список
       return [];
@@ -145,21 +183,36 @@ class LocalOpLogRepositoryImpl implements LocalOpLogRepository {
 
   @override
   Future<void> clear() async {
-    await _prefs.remove(_kCounterOperationsKey);
-    developer.log(
-      '🗑️ Operations cleared',
-      name: 'LocalOpLogRepositoryImpl',
-      error: null,
-      stackTrace: null,
-      level: 800, // INFO level
+    if (!_initialized) {
+      AppLogger.info(
+        component: AppLogComponent.localOpLog,
+        message: 'LocalOpLogRepository auto-initialize on clear.',
+        context: <String, Object?>{
+          'scope': _scope,
+          'storage_key': _storageKey(),
+        },
+      );
+      await initialize();
+    }
+
+    final key = _storageKey();
+    await _prefs.remove(key);
+    AppLogger.info(
+      component: AppLogComponent.localOpLog,
+      message: 'Operations cleared',
+      context: <String, Object?>{'scope': _scope, 'storage_key': key},
     );
+  }
+
+  String _storageKey() {
+    return '$_kCounterOperationsKeyBase::$_scope';
   }
 
   /// Сохраняет операции в SharedPreferences.
   Future<void> _saveOperations(List<CounterOperation> operations) async {
     final jsonList = operations.map((op) => _serializeOperation(op)).toList();
     final jsonString = jsonEncode(jsonList);
-    await _prefs.setString(_kCounterOperationsKey, jsonString);
+    await _prefs.setString(_storageKey(), jsonString);
   }
 
   /// Сериализует операцию в JSON.
@@ -203,12 +256,15 @@ class LocalOpLogRepositoryImpl implements LocalOpLogRepository {
     }
 
     final removedCount = operations.length - kMaxOperationsCount;
-    developer.log(
-      '📉 Compacting op-log: removing $removedCount oldest operations (limit: $kMaxOperationsCount)',
-      name: 'LocalOpLogRepositoryImpl',
-      error: null,
-      stackTrace: null,
-      level: 800, // INFO level
+    AppLogger.info(
+      component: AppLogComponent.localOpLog,
+      message: 'Compacting op-log: removing oldest operations',
+      context: <String, Object?>{
+        'scope': _scope,
+        'storage_key': _storageKey(),
+        'removed_count': removedCount,
+        'limit': kMaxOperationsCount,
+      },
     );
 
     // Оставляем только последние kMaxOperationsCount операций

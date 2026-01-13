@@ -1,40 +1,54 @@
-import 'dart:developer' as developer;
-
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import 'package:counter_schmounter/src/domain/counter/utils/counter_aggregator.dart';
 import 'package:counter_schmounter/src/infrastructure/counter/providers/local_op_log_repository_provider.dart';
+import 'package:counter_schmounter/src/infrastructure/shared/logging/app_logger.dart';
 
 part 'counter_state_provider.g.dart';
 
-/// Провайдер для агрегированного состояния счетчика.
+/// Провайдер агрегированного состояния счетчика.
 ///
-/// Читает операции из [LocalOpLogRepository] и вычисляет итоговое значение
-/// счетчика через [CounterAggregator.compute].
+/// Назначение:
+/// - читает локальный op-log,
+/// - агрегирует операции через [CounterAggregator],
+/// - возвращает текущее значение счетчика.
 ///
-/// Обновляется через [ref.invalidate()] после изменений в op-log.
-/// Используется ViewModel и UI для получения текущего значения счетчика.
+/// Обновляется исключительно через:
+/// - invalidate (sync / realtime),
+/// - первый watch (startup).
 ///
-/// **Важно:** Repository должен быть инициализирован перед использованием.
+/// КРИТИЧНО:
+/// - не содержит побочных эффектов,
+/// - детерминирован,
+/// - одинаково работает на Web и Mobile.
 @riverpod
 Future<int> counterState(Ref ref) async {
+  AppLogger.info(
+    component: AppLogComponent.state,
+    message: 'CounterStateProvider build START',
+  );
+
   final repository = ref.watch(localOpLogRepositoryProvider);
 
-  // Убеждаемся, что repository инициализирован
-  await repository.initialize();
-
-  // Загружаем все операции
+  /// Читаем все операции
   final operations = await repository.getAll();
 
-  // Вычисляем итоговое значение счетчика
+  AppLogger.info(
+    component: AppLogComponent.state,
+    message: 'CounterStateProvider loaded operations',
+    context: <String, Object?>{'operations_count': operations.length},
+  );
+
+  /// Агрегируем
   final counter = CounterAggregator.compute(operations);
 
-  developer.log(
-    '📊 Counter state computed: $counter (${operations.length} operations)',
-    name: 'CounterStateProvider',
-    error: null,
-    stackTrace: null,
-    level: 700, // FINE level
+  AppLogger.info(
+    component: AppLogComponent.state,
+    message: 'CounterStateProvider build END',
+    context: <String, Object?>{
+      'computed_value': counter,
+      'operations_count': operations.length,
+    },
   );
 
   return counter;

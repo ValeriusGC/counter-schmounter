@@ -7,6 +7,7 @@ import 'package:counter_schmounter/src/infrastructure/auth/providers/auth_use_ca
 import 'package:counter_schmounter/src/infrastructure/auth/providers/supabase_client_provider.dart';
 import 'package:counter_schmounter/src/infrastructure/counter/providers/counter_state_provider.dart';
 import 'package:counter_schmounter/src/infrastructure/counter/providers/increment_counter_use_case_provider.dart';
+import 'package:counter_schmounter/src/infrastructure/sync/controllers/need_sync_controller.dart';
 import 'package:counter_schmounter/src/presentation/shared/navigation/navigation_state.dart';
 
 part 'counter_viewmodel.g.dart';
@@ -141,6 +142,10 @@ class CounterViewModel extends _$CounterViewModel {
     await incrementCounterUseCase.execute();
     // Инвалидируем counterStateProvider, чтобы он пересчитал значение из обновленного op-log
     ref.invalidate(counterStateProvider);
+
+    await ref
+        .read(needSyncControllerProvider.notifier)
+        .markCounterNeedSync(reason: 'local_increment');
   }
 
   /// Выполняет выход пользователя из системы.

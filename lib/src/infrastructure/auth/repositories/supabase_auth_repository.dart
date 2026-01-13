@@ -1,8 +1,7 @@
-import 'dart:developer' as developer;
-
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:counter_schmounter/src/domain/auth/repositories/auth_repository.dart';
+import 'package:counter_schmounter/src/infrastructure/shared/logging/app_logger.dart';
 
 /// Инфраструктурная реализация [AuthRepository] через Supabase.
 ///
@@ -32,12 +31,9 @@ class SupabaseAuthRepository implements AuthRepository {
   /// Выбрасывает исключение при ошибках валидации или проблемах с сетью.
   @override
   Future<void> signUp({required String email, required String password}) async {
-    developer.log(
-      '📤 Calling Supabase signUp API...',
-      name: 'SupabaseAuthRepository',
-      error: null,
-      stackTrace: null,
-      level: 700, // FINE level
+    AppLogger.info(
+      component: AppLogComponent.ui,
+      message: 'Calling Supabase signUp API',
     );
 
     final response = await _client.auth.signUp(
@@ -50,22 +46,18 @@ class SupabaseAuthRepository implements AuthRepository {
     // Это нормальное поведение при включенной настройке email confirmation в Supabase.
     // Пользователь будет создан после подтверждения email по ссылке из письма.
     if (user == null) {
-      developer.log(
-        '📧 Email confirmation required (user will be created after confirmation)',
-        name: 'SupabaseAuthRepository',
-        error: null,
-        stackTrace: null,
-        level: 800, // INFO level
+      AppLogger.info(
+        component: AppLogComponent.ui,
+        message:
+            'Email confirmation required (user will be created after confirmation)',
       );
       return;
     }
 
-    developer.log(
-      '👤 User created: ${user.id}',
-      name: 'SupabaseAuthRepository',
-      error: null,
-      stackTrace: null,
-      level: 800, // INFO level
+    AppLogger.info(
+      component: AppLogComponent.ui,
+      message: 'User created',
+      context: <String, Object?>{'user_id': user.id},
     );
   }
 
@@ -81,12 +73,9 @@ class SupabaseAuthRepository implements AuthRepository {
   /// Выбрасывает исключение при неверных учетных данных или других ошибках.
   @override
   Future<void> signIn({required String email, required String password}) async {
-    developer.log(
-      '📤 Calling Supabase signInWithPassword API...',
-      name: 'SupabaseAuthRepository',
-      error: null,
-      stackTrace: null,
-      level: 700, // FINE level
+    AppLogger.info(
+      component: AppLogComponent.ui,
+      message: 'Calling Supabase signInWithPassword API',
     );
 
     final response = await _client.auth.signInWithPassword(
@@ -95,22 +84,14 @@ class SupabaseAuthRepository implements AuthRepository {
     );
 
     if (response.user != null) {
-      developer.log(
-        '👤 User authenticated: ${response.user!.id}',
-        name: 'SupabaseAuthRepository',
-        error: null,
-        stackTrace: null,
-        level: 800, // INFO level
+      AppLogger.info(
+        component: AppLogComponent.ui,
+        message: 'User authenticated',
+        context: <String, Object?>{
+          'user_id': response.user!.id,
+          'has_session': response.session != null,
+        },
       );
-      if (response.session != null) {
-        developer.log(
-          '🔑 Session created',
-          name: 'SupabaseAuthRepository',
-          error: null,
-          stackTrace: null,
-          level: 700, // FINE level
-        );
-      }
     }
   }
 
@@ -123,22 +104,13 @@ class SupabaseAuthRepository implements AuthRepository {
   /// Выбрасывает исключение при ошибках сети или других проблемах.
   @override
   Future<void> signOut() async {
-    developer.log(
-      '📤 Calling Supabase signOut API...',
-      name: 'SupabaseAuthRepository',
-      error: null,
-      stackTrace: null,
-      level: 700, // FINE level
+    AppLogger.info(
+      component: AppLogComponent.ui,
+      message: 'Calling Supabase signOut API',
     );
 
     await _client.auth.signOut();
 
-    developer.log(
-      '🔓 Session cleared',
-      name: 'SupabaseAuthRepository',
-      error: null,
-      stackTrace: null,
-      level: 800, // INFO level
-    );
+    AppLogger.info(component: AppLogComponent.ui, message: 'Session cleared');
   }
 }

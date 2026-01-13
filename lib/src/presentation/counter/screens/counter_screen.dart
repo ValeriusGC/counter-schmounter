@@ -1,45 +1,63 @@
 import 'package:flutter/material.dart';
-
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:counter_schmounter/src/infrastructure/auth/providers/auth_state_listenable_provider.dart';
+import 'package:counter_schmounter/src/infrastructure/bootstrap/infrastructure_init_provider.dart';
 import 'package:counter_schmounter/src/infrastructure/counter/providers/counter_state_provider.dart';
+import 'package:counter_schmounter/src/infrastructure/realtime/services/counter_realtime_events_service.dart';
+import 'package:counter_schmounter/src/infrastructure/sync/controllers/counter_initial_sync_controller.dart';
 import 'package:counter_schmounter/src/presentation/counter/viewmodels/counter_viewmodel.dart';
 
-import 'package:counter_schmounter/src/core/src/extensions/string_extensions.dart';
-
-/// Экран счетчика - главный публичный экран приложения.
+/// Экран счетчика — главный публичный экран приложения.
 ///
-/// Отображает простой счетчик, который можно увеличивать нажатием на кнопку.
-/// Доступен всем пользователям (не требует аутентификации).
-/// Содержит кнопку "Sign in/Sign up" в AppBar (для неавторизованных) или кнопку выхода (для авторизованных).
-///
-/// Использует [CounterViewModel] для управления состоянием и бизнес-логикой.
-/// UI слой только отображает состояние и передает события в ViewModel.
+/// Архитектурные принципы:
+/// - counterStateProvider отображается ВСЕГДА (read-model).
+/// - CounterViewModel НЕ гейтит отображение счетчика.
+/// - Initial sync и realtime запускаются ТОЛЬКО после infrastructure init.
+/// - Экран корректно работает одинаково на Web и Mobile.
 class CounterScreen extends ConsumerWidget {
-  /// Создает экземпляр [CounterScreen].
   const CounterScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    /// 1. Старт-гейт инфраструктуры
+    final infraInit = ref.watch(infrastructureInitProvider);
+
+    if (infraInit.isLoading) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+
+    if (infraInit.hasError) {
+      return Scaffold(
+        body: Center(child: Text('Init error: ${infraInit.error}')),
+      );
+    }
+
+    /// 2. ПРОГРЕВ read-model (КРИТИЧНО ДЛЯ WEB)
+    final counterAsync = ref.watch(counterStateProvider);
+
+    /// 3. Разрешаем сайд-эффекты ТОЛЬКО после init
+    ref.watch(counterInitialSyncControllerProvider);
+    ref.watch(counterRealtimeEventsServiceProvider);
+
+    /// 4. ViewModel используется ТОЛЬКО для действий (sign out / increment)
     final stateAsync = ref.watch(counterViewModelProvider);
     final viewModel = ref.read(counterViewModelProvider.notifier);
+
     final isAuthenticated = ref
         .watch(authStateListenableProvider)
         .isAuthenticated;
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('Counter'.hardcoded),
+        title: const Text('Counter'),
         actions: [
-          // Кнопка входа/регистрации (для неавторизованных пользователей)
           if (!isAuthenticated)
             TextButton(
               onPressed: () => context.push('/login'),
-              child: const Text('Sign in/Sign up'),
+              child: const Text('Sign in / Sign up'),
             ),
-          // Кнопка выхода из системы с индикатором загрузки (только для авторизованных)
           if (isAuthenticated)
             stateAsync.when(
               data: (state) => TextButton(
@@ -52,7 +70,7 @@ class CounterScreen extends ConsumerWidget {
                         height: 16,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
-                    : Text('Sign out'.hardcoded),
+                    : const Text('Sign out'),
               ),
               loading: () => const SizedBox(
                 width: 16,
@@ -64,39 +82,25 @@ class CounterScreen extends ConsumerWidget {
           const SizedBox(width: 8),
         ],
       ),
-      body: stateAsync.when(
-        data: (_) {
-          // Читаем значение счетчика из counterStateProvider
-          final counterAsync = ref.watch(counterStateProvider);
-          return counterAsync.when(
-            data: (counter) => Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: <Widget>[
-                  Text('You have pushed the button this many times:'.hardcoded),
-                  // Отображаем текущее значение счетчика крупным шрифтом
-                  Text(
-                    '$counter',
-                    style: Theme.of(context).textTheme.headlineMedium,
-                  ),
-                ],
+      body: Center(
+        child: counterAsync.when(
+          data: (counter) => Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: <Widget>[
+              const Text('You have pushed the button this many times:'),
+              Text(
+                '$counter',
+                style: Theme.of(context).textTheme.headlineMedium,
               ),
-            ),
-            loading: () => const Center(child: CircularProgressIndicator()),
-            error: (error, stackTrace) => Center(child: Text('Error: $error')),
-          );
-        },
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, stackTrace) => Center(child: Text('Error: $error')),
-      ),
-      // Кнопка для увеличения счетчика
-      floatingActionButton: stateAsync.when(
-        data: (_) => FloatingActionButton(
-          onPressed: () => viewModel.incrementCounter(),
-          child: const Icon(Icons.add),
+            ],
+          ),
+          loading: () => const CircularProgressIndicator(),
+          error: (error, _) => Text('Error: $error'),
         ),
-        loading: () => null,
-        error: (_, _) => null,
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => viewModel.incrementCounter(),
+        child: const Icon(Icons.add),
       ),
     );
   }
