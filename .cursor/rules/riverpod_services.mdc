@@ -1,10 +1,10 @@
 ---
 type: Always
-description: Riverpod как DI; кодоген и допустимые ручные Provider
+description: Riverpod как DI; кодоген @riverpod
 ---
 
 **Дата создания:** 2026-02-15 17:37
-**Последнее изменение:** 2026-04-22 21:38
+**Последнее изменение:** 2026-04-22 22:47
 
 # Riverpod: DI и реактивный движок
 
@@ -19,35 +19,23 @@ description: Riverpod как DI; кодоген и допустимые ручн
 
 ## Сервисы и репозитории через провайдеры
 
-Реализации **не** создавать вручную внутри виджетов (`new MyRepo(...)`). Получать через `ref.read`/`ref.watch` провайдера, который возвращает интерфейс из `domain` или готовый клиент.
+Реализации **не** создавать вручную внутри виджетов (`new MyRepo(...)`). Получать через `ref.read` / `ref.watch` на сгенерированных или существующих провайдерах.
 
 ---
 
-## Кодоген **по умолчанию**
+## Кодоген **по умолчанию (и в auth/роутере)**
 
-Новые провайдеры фич (use cases, состояние счётчика, sync-контроллеры, `@riverpod`-сервисы) оформлять через **`@riverpod` / `@Riverpod`** + `part '....g.dart'` + `build_runner`.
+Провайдеры оформлять через **`@riverpod`** (или `@Riverpod(keepAlive: true)` при необходимости) + `riverpod_annotation` + `part '....g.dart'` + `dart run build_runner build`.
 
-См. также `.cursor/rules/application.mdc` (п. 0).
+Сюда относятся в т.ч. `supabaseClient`, `authRepository`, use case-ы в [lib/src/infrastructure/auth/providers/auth_use_case_providers.dart](lib/src/infrastructure/auth/providers/auth_use_case_providers.dart), `authStateListenable` / `isAuthenticated`, [goRouter](lib/src/router.dart). Ручных `Provider((ref) => ...)` в этих ролях **не** вводим.
+
+См. `.cursor/rules/application.mdc` (п. 0).
 
 ---
 
-## Исключения: допустимые **ручные** `Provider`
+## Редкие ручные `Provider`
 
-В текущем коде заранее приняты **тонкие** ручные провайдеры без кодогена (только связывают `Ref` с уже существующим глобалом/DI):
-
-| Файл | Назначение |
-|------|------------|
-| `lib/src/infrastructure/auth/providers/supabase_client_provider.dart` | `SupabaseClient` из `Supabase.instance` |
-| `lib/src/infrastructure/auth/providers/auth_repository_provider.dart` | `AuthRepository` |
-| `lib/src/infrastructure/auth/providers/auth_use_case_providers.dart` | `SignIn` / `SignUp` / `SignOut` use cases |
-| `lib/src/infrastructure/auth/providers/auth_state_listenable_provider.dart` | listenable + `isAuthenticated` |
-| `lib/src/router.dart` | `GoRouter` |
-
-**Правила для новых ручных провайдеров:**
-
-- ❌ Не добавлять произвольные ручные `StateProvider` / `FutureProvider` «с нуля», если достаточно `@riverpod`.
-- ✅ Новый ручной `Provider` — только по тому же принципу: **одна строка-фабрика**, нет бизнес-логики внутри `(ref) =>`, при необходимости обсудить дублирование с существующими.
-- ✅ Предпочтительно со временем свести к `@riverpod` при рефакторинге — но это не блокер для мелких правок.
+`Provider` / `StateProvider` вручную — только если **нельзя** выразить через `@riverpod` или миграция ломает публичный API; согласовать с соседними провайдерами в `lib/src/`. В норме в репозитории **только** кодоген.
 
 ---
 
@@ -55,7 +43,7 @@ description: Riverpod как DI; кодоген и допустимые ручн
 
 1. Контракт в domain: `abstract interface class`.
 2. Реализация в `infrastructure`.
-3. Провайдер: по умолчанию `@riverpod`; ручной `Provider` — только если попадает под исключения выше.
+3. Провайдер: `@riverpod` (по умолчанию).
 
 ---
 
