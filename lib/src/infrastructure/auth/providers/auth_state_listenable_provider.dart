@@ -1,10 +1,12 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:counter_schmounter/src/infrastructure/auth/providers/supabase_client_provider.dart';
+
+part 'auth_state_listenable_provider.g.dart';
 
 /// [ChangeNotifier], который отслеживает изменения состояния аутентификации
 /// и уведомляет подписчиков (например, GoRouter) о необходимости обновления.
@@ -50,19 +52,21 @@ class AuthStateListenable extends ChangeNotifier {
 ///
 /// Автоматически очищает ресурсы при удалении провайдера из дерева виджетов.
 /// Используется GoRouter для реактивного обновления маршрутов.
-final authStateListenableProvider = Provider<AuthStateListenable>((ref) {
+@riverpod
+AuthStateListenable authStateListenable(Ref ref) {
   final client = ref.watch(supabaseClientProvider);
   final listenable = AuthStateListenable(client);
   // Обеспечиваем правильную очистку ресурсов при удалении провайдера
   ref.onDispose(listenable.dispose);
   return listenable;
-});
+}
 
 /// Провайдер для проверки состояния аутентификации пользователя.
 ///
 /// Возвращает `true`, если пользователь авторизован, и `false` в противном случае.
 /// Реактивно обновляется при изменении состояния аутентификации.
-final isAuthenticatedProvider = Provider<bool>((ref) {
+@riverpod
+bool isAuthenticated(Ref ref) {
   final auth = ref.watch(authStateListenableProvider);
   return auth.isAuthenticated;
-});
+}

@@ -1,10 +1,12 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import 'package:counter_schmounter/src/infrastructure/auth/providers/auth_state_listenable_provider.dart';
 import 'package:counter_schmounter/src/presentation/auth/screens/login_screen.dart';
 import 'package:counter_schmounter/src/presentation/auth/screens/signup_screen.dart';
 import 'package:counter_schmounter/src/presentation/counter/screens/counter_screen.dart';
+
+part 'router.g.dart';
 
 /// Провайдер конфигурации GoRouter для навигации в приложении.
 ///
@@ -19,7 +21,8 @@ import 'package:counter_schmounter/src/presentation/counter/screens/counter_scre
 ///
 /// Логика редиректов:
 /// - Авторизованные пользователи на `/login` или `/signup` перенаправляются на `/counter`
-final goRouterProvider = Provider<GoRouter>((ref) {
+@riverpod
+GoRouter goRouter(Ref ref) {
   // Отслеживаем состояние аутентификации для реактивного обновления роутера
   final auth = ref.watch(authStateListenableProvider);
 
@@ -62,4 +65,4 @@ final goRouterProvider = Provider<GoRouter>((ref) {
       ),
     ],
   );
-});
+}
