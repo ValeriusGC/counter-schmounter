@@ -1,0 +1,75 @@
+---
+type: Always
+description: Архитектурные правила Counter-Schmounter (DDD, слои)
+---
+
+**Дата создания:** 2026-03-10 21:19
+**Последнее изменение:** 2026-04-22 21:38
+
+# Архитектура Counter-Schmounter
+
+## Принципы архитектуры
+
+1. **Domain-Driven Design (DDD)**
+   - Чёткое разделение доменной логики, состояния и UI
+   - Доменная модель как источник истины для бизнес-инвариантов
+   - Инварианты защищены на уровне домена
+
+2. **Простота и прозрачность**
+   - Минимум связей между компонентами
+   - Максимальная читаемость кода
+   - Понятные потоки данных
+
+3. **Riverpod-first подход**
+   - Riverpod — **DI** и **реактивный движок** (`ref.watch` для UI там, где данные меняются).
+   - Зависимости инфраструктуры — через провайдеры (см. `.cursor/rules/riverpod_services.mdc`).
+
+4. **Memory-first: персист только для сохранения**
+   - Источник истины для отображения и решений в процессе работы — **состояние в памяти** (провайдеры / viewmodels после операции).
+   - **SharedPreferences** и **Supabase** — персист и синхронизация; не строить цепочку «мутация → запись → немедленное чтение из хранилища ради UI».
+   - Подробнее: `.cursor/rules/application.mdc` (memory-first), `.cursor/rules/ui.mdc` (быстрый UI).
+
+## Структура слоёв (фактическая)
+
+```
+lib/
+ └── src/
+      ├── domain/           # Чистый Dart, без Flutter/инфраструктуры
+      ├── application/    # Use cases (Dart), провайдеры use case при необходимости
+      ├── infrastructure/ # Репозитории, Supabase, SharedPreferences, sync, realtime
+      ├── presentation/   # Экраны, viewmodels (Flutter + Riverpod)
+      └── core/             # Общие утилиты расширений и т.п.
+```
+
+## Правила взаимодействия слоёв
+
+### Поток данных
+
+- **Presentation** → вызывает use cases / viewmodels; **не** ходит в репозитории напрямую для бизнес-операций.
+- **Application** → доменные типы + абстракции репозиториев (интерфейсы в `domain`).
+- **Infrastructure** → реализации репозиториев, Supabase, локальное хранилище.
+- **Domain** → не зависит от Flutter, Riverpod, Supabase, SharedPreferences.
+
+### Критические ограничения
+
+- ✅ Presentation подписывается на провайдеры (`ref.watch` / `ref.read(notifier)`); провайдеры объявлены в `infrastructure` или `application` — это норма для текущего кода.
+- ❌ Не добавлять в виджеты прямые вызовы `Supabase.instance...`, `SharedPreferences.getInstance()` или `new ...RepositoryImpl(...)` вместо DI через провайдеры.
+- ❌ Domain **не** импортирует Flutter / Riverpod / `package:supabase_flutter` / `shared_preferences`.
+- ✅ Логи: каждый `developer.log()` — в `// #region log` / `// #endregion` (см. `code_style.mdc`).
+
+## Примеры путей в репозитории
+
+- Домен: `lib/src/domain/counter/...`
+- Use case: `lib/src/application/counter/use_cases/...`
+- Инфраструктура: `lib/src/infrastructure/counter/repositories/...`
+- UI: `lib/src/presentation/counter/screens/...`
+
+## UI Projection Pattern
+
+Для сложного UI по возможности:
+
+- **Controller/ViewModel** — решения и агрегация
+- **Projection / builder** — производные значения и форматирование
+- **Виджет** — в основном отображение и колбэки намерений
+
+Детали и строгость — `.cursor/rules/ui.mdc`.

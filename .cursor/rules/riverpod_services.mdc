@@ -1,0 +1,65 @@
+---
+type: Always
+description: Riverpod как DI; кодоген и допустимые ручные Provider
+---
+
+**Дата создания:** 2026-02-15 17:37
+**Последнее изменение:** 2026-04-22 21:38
+
+# Riverpod: DI и реактивный движок
+
+## Роли Riverpod
+
+1. **DI** — зависимости создаются в провайдерах и подставляются через `ref`.
+2. **Реактивность** — `ref.watch` там, где данные меняются.
+
+Избегать отдельных глобальных «сервис-синглтонов» в обход `ProviderScope`, кроме того, что даёт SDK (например, клиент Supabase после `Supabase.initialize` в `main`).
+
+---
+
+## Сервисы и репозитории через провайдеры
+
+Реализации **не** создавать вручную внутри виджетов (`new MyRepo(...)`). Получать через `ref.read`/`ref.watch` провайдера, который возвращает интерфейс из `domain` или готовый клиент.
+
+---
+
+## Кодоген **по умолчанию**
+
+Новые провайдеры фич (use cases, состояние счётчика, sync-контроллеры, `@riverpod`-сервисы) оформлять через **`@riverpod` / `@Riverpod`** + `part '....g.dart'` + `build_runner`.
+
+См. также `.cursor/rules/application.mdc` (п. 0).
+
+---
+
+## Исключения: допустимые **ручные** `Provider`
+
+В текущем коде заранее приняты **тонкие** ручные провайдеры без кодогена (только связывают `Ref` с уже существующим глобалом/DI):
+
+| Файл | Назначение |
+|------|------------|
+| `lib/src/infrastructure/auth/providers/supabase_client_provider.dart` | `SupabaseClient` из `Supabase.instance` |
+| `lib/src/infrastructure/auth/providers/auth_repository_provider.dart` | `AuthRepository` |
+| `lib/src/infrastructure/auth/providers/auth_use_case_providers.dart` | `SignIn` / `SignUp` / `SignOut` use cases |
+| `lib/src/infrastructure/auth/providers/auth_state_listenable_provider.dart` | listenable + `isAuthenticated` |
+| `lib/src/router.dart` | `GoRouter` |
+
+**Правила для новых ручных провайдеров:**
+
+- ❌ Не добавлять произвольные ручные `StateProvider` / `FutureProvider` «с нуля», если достаточно `@riverpod`.
+- ✅ Новый ручной `Provider` — только по тому же принципу: **одна строка-фабрика**, нет бизнес-логики внутри `(ref) =>`, при необходимости обсудить дублирование с существующими.
+- ✅ Предпочтительно со временем свести к `@riverpod` при рефакторинге — но это не блокер для мелких правок.
+
+---
+
+## Модель «сервис с платформой» (если понадобится)
+
+1. Контракт в domain: `abstract interface class`.
+2. Реализация в `infrastructure`.
+3. Провайдер: по умолчанию `@riverpod`; ручной `Provider` — только если попадает под исключения выше.
+
+---
+
+## Запрещено
+
+- Static-обёртки вместо провайдера для кода, который должен подменяться в тестах.
+- Создание тяжёлых зависимостей прямо в `build()` виджета.
