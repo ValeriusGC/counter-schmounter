@@ -1,0 +1,61 @@
+---
+type: Auto Attached
+description: Правила Flutter/Dart для Counter-Schmounter
+paths:
+  - lib/**
+  - test/**
+---
+
+**Дата создания:** 2026-02-06 23:10
+**Последнее изменение:** 2026-04-22 21:38
+
+# Flutter/Dart Rules
+
+## Общие правила Flutter
+
+- ✅ Используй актуальные практики **Dart 3.x**
+- ✅ Следуй **Material Design 3**
+- ✅ Рекомендуй проверенные пакеты из pub.dev
+- ✅ Учитывай производительность и доступность
+
+## Логирование
+
+- ❌ **НЕ** используй `print()`
+- ✅ Используй `log()` из `dart:developer`
+- ✅ **Обязательно** обрамляй каждый вызов `developer.log(...)` тегами:
+  - перед: `// #region log`
+  - после: `// #endregion`
+- ✅ Debug режим: полное логирование
+- ✅ Release режим: только ошибки
+
+## Импорты
+
+- ✅ Все импорты **абсолютные**: `package:counter_schmounter/src/...`
+- ✅ Группировка импортов:
+  1. Dart SDK
+  2. Flutter SDK
+  3. Пакеты pub.dev
+  4. Локальные импорты (относительные или абсолютные)
+
+## Тестирование
+
+- ✅ Unit тесты для domain слоя
+- ✅ Тесты для application/infrastructure при наличии
+- ✅ Widget тесты для UI компонентов
+- ✅ Покрытие кода важно
+
+## Асинхронность и отложенное выполнение
+
+- ❌ **НЕ** использовать `Future.microtask()` и `scheduleMicrotask()` — крайняя мера, в проекте от них отказались.
+- ✅ Отложить выполнение на следующий цикл события: **`Future(() async { ... })`** (очередь событий, `Timer.run`).
+- ✅ После отрисовки кадра: **`WidgetsBinding.instance.addPostFrameCallback(...)`**.
+- ✅ Для «не блокировать колбек» (внешние API): цепочка **`.then((_) async { ... })`** по завершении Future или **`Future(() async { ... })`**.
+
+## Code Generation
+
+- ✅ Используй `build_runner` для генерации кода
+- ✅ Генерируемые файлы Riverpod: `*.g.dart` рядом с исходником (`part '...g.dart'`)
+- ✅ После изменений запускай: `dart run build_runner build --delete-conflicting-outputs`
+
+## Детали
+
