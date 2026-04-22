@@ -22,6 +22,10 @@ part 'counter_realtime_events_service.g.dart';
 /// - при `user_id == null` → отписываемся + закрываем канал
 /// - при `gate == false` → отписываемся + закрываем канал
 /// - при `user_id != null && gate == true` → подписываемся
+///
+/// Важно (Riverpod): без `fireImmediately: true` при холодном старте со стабильной
+/// сессией колбэки не вызываются — `_lastUserId` остаётся null и подписка на Supabase
+/// Realtime никогда не создаётся (та же проблема, что у initial sync).
 @riverpod
 class CounterRealtimeEventsService extends _$CounterRealtimeEventsService {
   RealtimeChannel? _channel;
@@ -32,15 +36,18 @@ class CounterRealtimeEventsService extends _$CounterRealtimeEventsService {
   @override
   void build() {
     ref.listen<AsyncValue<String?>>(supabaseUserIdProvider, (previous, next) {
+      if (next.isLoading) {
+        return;
+      }
       final userId = next.asData?.value;
       _lastUserId = userId;
       _reconcile();
-    });
+    }, fireImmediately: true);
 
     ref.listen<bool>(realtimeGateControllerProvider, (previous, next) {
       _isGateOpen = next;
       _reconcile();
-    });
+    }, fireImmediately: true);
 
     ref.onDispose(() async {
       await _disposeChannel();

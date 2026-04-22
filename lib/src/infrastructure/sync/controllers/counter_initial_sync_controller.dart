@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:counter_schmounter/src/application/counter/providers/export_local_operations_use_case_provider.dart';
 import 'package:counter_schmounter/src/application/counter/providers/sync_counter_use_case_provider.dart';
@@ -22,7 +25,9 @@ part 'counter_initial_sync_controller.g.dart';
 ///   4) enable realtime gate
 ///
 /// Триггер:
-/// - смена `supabaseUserId`: `<any> → userId`
+/// - `ref.listen(..., fireImmediately: true)` на [supabaseUserIdProvider]
+/// - страховка: `ref.watch` того же провайдера + отложенный запуск (`Future(() async …)`), если realtime gate всё ещё закрыт
+///   (редкий порядок инициализации StreamProvider / холодный старт с уже восстановленной сессией).
 ///
 /// Важно:
 /// - realtime НЕ включается, пока pipeline не завершён успешно;
@@ -35,63 +40,137 @@ class CounterInitialSyncController extends _$CounterInitialSyncController {
 
   @override
   void build() {
-    ref.listen<AsyncValue<String?>>(supabaseUserIdProvider, (
-      previous,
-      next,
-    ) async {
-      final prevUserId = previous?.asData?.value;
-      final nextUserId = next.asData?.value;
+    final authSnapshot = ref.watch(supabaseUserIdProvider);
 
+    ref.listen<AsyncValue<String?>>(supabaseUserIdProvider, (previous, next) {
+      unawaited(_handleSupabaseAuthAsync(previous, next));
+    }, fireImmediately: true);
+
+    // Страховка поверх listen: один раз после того как AsyncValue содержит user_id,
+    // если gate ещё не открыт — форсим тот же обработчик (другие устройства / cold start).
+    authSnapshot.maybeWhen(
+      data: (userId) {
+        if (userId == null) {
+          return;
+        }
+        unawaited(
+          Future<void>(() async {
+            if (!ref.mounted) {
+              return;
+            }
+            final gateOpen = ref.read(realtimeGateControllerProvider);
+            if (gateOpen && _lastSyncedUserId == userId) {
+              return;
+            }
+            await _handleSupabaseAuthAsync(
+              null,
+              ref.read(supabaseUserIdProvider),
+            );
+          }),
+        );
+      },
+      orElse: () {},
+    );
+  }
+
+  Future<void> _handleSupabaseAuthAsync(
+    AsyncValue<String?>? previous,
+    AsyncValue<String?> next,
+  ) async {
+    // Первое fireImmediately может быть ещё AsyncLoading у StreamProvider.
+    if (next.isLoading) {
+      return;
+    }
+
+    final prevUserId = previous?.asData?.value;
+    final nextUserId = next.asData?.value;
+
+    AppLogger.info(
+      component: AppLogComponent.sync,
+      message: 'Auth state observed in CounterInitialSyncController.',
+      context: <String, Object?>{
+        'prev_user_id': prevUserId,
+        'next_user_id': nextUserId,
+        'last_synced_user_id': _lastSyncedUserId,
+      },
+    );
+
+    // Logout -> переход в anonymous scope.
+    if (nextUserId == null) {
       AppLogger.info(
         component: AppLogComponent.sync,
-        message: 'Auth state observed in CounterInitialSyncController.',
-        context: <String, Object?>{
-          'prev_user_id': prevUserId,
-          'next_user_id': nextUserId,
-          'last_synced_user_id': _lastSyncedUserId,
-        },
+        message: 'Logout detected. Switching to anonymous scope.',
+        context: <String, Object?>{'prev_user_id': prevUserId},
       );
 
-      // Logout -> переход в anonymous scope.
-      if (nextUserId == null) {
-        AppLogger.info(
-          component: AppLogComponent.sync,
-          message: 'Logout detected. Switching to anonymous scope.',
-          context: <String, Object?>{'prev_user_id': prevUserId},
-        );
+      _lastSyncedUserId = null;
 
-        _lastSyncedUserId = null;
+      // counterState обновится через localOpLogRepository (см. NeedSyncController).
+      return;
+    }
 
-        // Важно: read-model должен пересчитаться для нового scope (anonymous).
-        ref.invalidate(counterStateProvider);
+    // Авторизованы. Если user_id не изменился и уже синкались — выходим.
+    if (_lastSyncedUserId == nextUserId) {
+      AppLogger.info(
+        component: AppLogComponent.sync,
+        message: 'Initial sync skipped: already synced for this user.',
+        context: <String, Object?>{
+          'user_id': nextUserId,
+          'entity_id': CounterEntityIds.defaultCounter,
+        },
+      );
+      return;
+    }
 
-        // Realtime gate закрывается отдельным контроллером (уже реализовано).
-        return;
+    _pipelineSeq += 1;
+    final int pipelineSeq = _pipelineSeq;
+
+    AppLogger.info(
+      component: AppLogComponent.sync,
+      message: 'User changed / first login detected. Starting initial sync.',
+      context: <String, Object?>{
+        'user_id': nextUserId,
+        'entity_id': CounterEntityIds.defaultCounter,
+        'pipeline_seq': pipelineSeq,
+      },
+    );
+
+    bool isPipelineValid() {
+      if (!ref.mounted) {
+        return false;
       }
+      if (_pipelineSeq != pipelineSeq) {
+        return false;
+      }
+      // StreamProvider между await может ненадолго вернуться в AsyncLoading без asData —
+      // подстраховываемся текущей сессией из Supabase SDK.
+      final asyncUid = ref.read(supabaseUserIdProvider).asData?.value;
+      final sdkUid = Supabase.instance.client.auth.currentUser?.id;
+      final currentUserId = asyncUid ?? sdkUid;
 
-      // Авторизованы. Если user_id не изменился и уже синкались — выходим.
-      if (_lastSyncedUserId == nextUserId) {
+      return currentUserId == nextUserId;
+    }
+
+    Future<bool> runInitialSyncOnce() async {
+      final localRepo = ref.read(localOpLogRepositoryProvider);
+      await localRepo.initialize();
+
+      if (!isPipelineValid()) {
         AppLogger.info(
           component: AppLogComponent.sync,
-          message: 'Initial sync skipped: already synced for this user.',
+          message: 'Initial sync pipeline aborted after local repo init.',
           context: <String, Object?>{
             'user_id': nextUserId,
             'entity_id': CounterEntityIds.defaultCounter,
+            'pipeline_seq': pipelineSeq,
           },
         );
-        return;
+        return false;
       }
-
-      // Старт нового pipeline.
-      _pipelineSeq += 1;
-      final int pipelineSeq = _pipelineSeq;
-
-      // Фиксируем, что текущий pipeline относится к этому user_id.
-      _lastSyncedUserId = nextUserId;
 
       AppLogger.info(
         component: AppLogComponent.sync,
-        message: 'User changed / first login detected. Starting initial sync.',
+        message: 'Local op-log repository initialized for current scope.',
         context: <String, Object?>{
           'user_id': nextUserId,
           'entity_id': CounterEntityIds.defaultCounter,
@@ -99,150 +178,129 @@ class CounterInitialSyncController extends _$CounterInitialSyncController {
         },
       );
 
-      bool isPipelineValid() {
-        if (!ref.mounted) {
-          return false;
-        }
-        if (_pipelineSeq != pipelineSeq) {
-          return false;
-        }
-        final currentUserId = ref.read(supabaseUserIdProvider).asData?.value;
-        return currentUserId == nextUserId;
+      final syncUseCase = await ref.read(syncCounterUseCaseProvider.future);
+
+      if (!isPipelineValid()) {
+        AppLogger.info(
+          component: AppLogComponent.sync,
+          message: 'Initial sync pipeline aborted before pull.',
+          context: <String, Object?>{
+            'user_id': nextUserId,
+            'entity_id': CounterEntityIds.defaultCounter,
+            'pipeline_seq': pipelineSeq,
+          },
+        );
+        return false;
+      }
+
+      await syncUseCase.execute(entityId: CounterEntityIds.defaultCounter);
+
+      if (!isPipelineValid()) {
+        AppLogger.info(
+          component: AppLogComponent.sync,
+          message: 'Initial sync pipeline aborted after pull.',
+          context: <String, Object?>{
+            'user_id': nextUserId,
+            'entity_id': CounterEntityIds.defaultCounter,
+            'pipeline_seq': pipelineSeq,
+          },
+        );
+        return false;
+      }
+
+      AppLogger.info(
+        component: AppLogComponent.sync,
+        message: 'Initial pull finished. Starting export (push).',
+        context: <String, Object?>{
+          'user_id': nextUserId,
+          'entity_id': CounterEntityIds.defaultCounter,
+          'pipeline_seq': pipelineSeq,
+        },
+      );
+
+      final exportUseCase = await ref.read(
+        exportLocalOperationsUseCaseProvider.future,
+      );
+
+      if (!isPipelineValid()) {
+        AppLogger.info(
+          component: AppLogComponent.sync,
+          message: 'Initial sync pipeline aborted before export.',
+          context: <String, Object?>{
+            'user_id': nextUserId,
+            'entity_id': CounterEntityIds.defaultCounter,
+            'pipeline_seq': pipelineSeq,
+          },
+        );
+        return false;
+      }
+
+      await exportUseCase.execute(entityId: CounterEntityIds.defaultCounter);
+
+      if (!isPipelineValid()) {
+        AppLogger.info(
+          component: AppLogComponent.sync,
+          message: 'Initial sync pipeline aborted after export.',
+          context: <String, Object?>{
+            'user_id': nextUserId,
+            'entity_id': CounterEntityIds.defaultCounter,
+            'pipeline_seq': pipelineSeq,
+          },
+        );
+        return false;
+      }
+
+      ref.invalidate(counterStateProvider);
+
+      AppLogger.info(
+        component: AppLogComponent.sync,
+        message: 'Initial sync finished. CounterStateProvider invalidated.',
+        context: <String, Object?>{
+          'user_id': nextUserId,
+          'entity_id': CounterEntityIds.defaultCounter,
+          'pipeline_seq': pipelineSeq,
+        },
+      );
+
+      ref
+          .read(realtimeGateControllerProvider.notifier)
+          .enable(reason: 'initial_sync_pull_and_export_finished');
+
+      AppLogger.info(
+        component: AppLogComponent.realtime,
+        message: 'A3/B1: realtime gate opened after pull + export.',
+        context: <String, Object?>{
+          'user_id': nextUserId,
+          'entity_id': CounterEntityIds.defaultCounter,
+          'pipeline_seq': pipelineSeq,
+        },
+      );
+
+      return true;
+    }
+
+    const maxAttempts = 3;
+    var succeeded = false;
+    var attempt = 0;
+
+    while (!succeeded && attempt < maxAttempts) {
+      attempt++;
+
+      if (!isPipelineValid()) {
+        return;
       }
 
       try {
-        // 0) Гарантируем, что LocalOpLogRepository для текущего scope инициализирован.
-        final localRepo = ref.read(localOpLogRepositoryProvider);
-        await localRepo.initialize();
-
-        if (!isPipelineValid()) {
-          AppLogger.info(
-            component: AppLogComponent.sync,
-            message: 'Initial sync pipeline aborted after local repo init.',
-            context: <String, Object?>{
-              'user_id': nextUserId,
-              'entity_id': CounterEntityIds.defaultCounter,
-              'pipeline_seq': pipelineSeq,
-            },
-          );
+        succeeded = await runInitialSyncOnce();
+        if (!succeeded) {
           return;
         }
-
-        AppLogger.info(
-          component: AppLogComponent.sync,
-          message: 'Local op-log repository initialized for current scope.',
-          context: <String, Object?>{
-            'user_id': nextUserId,
-            'entity_id': CounterEntityIds.defaultCounter,
-            'pipeline_seq': pipelineSeq,
-          },
-        );
-
-        // 1) PULL
-        final syncUseCase = await ref.read(syncCounterUseCaseProvider.future);
-
-        if (!isPipelineValid()) {
-          AppLogger.info(
-            component: AppLogComponent.sync,
-            message: 'Initial sync pipeline aborted before pull.',
-            context: <String, Object?>{
-              'user_id': nextUserId,
-              'entity_id': CounterEntityIds.defaultCounter,
-              'pipeline_seq': pipelineSeq,
-            },
-          );
-          return;
-        }
-
-        await syncUseCase.execute(entityId: CounterEntityIds.defaultCounter);
-
-        if (!isPipelineValid()) {
-          AppLogger.info(
-            component: AppLogComponent.sync,
-            message: 'Initial sync pipeline aborted after pull.',
-            context: <String, Object?>{
-              'user_id': nextUserId,
-              'entity_id': CounterEntityIds.defaultCounter,
-              'pipeline_seq': pipelineSeq,
-            },
-          );
-          return;
-        }
-
-        AppLogger.info(
-          component: AppLogComponent.sync,
-          message: 'Initial pull finished. Starting export (push).',
-          context: <String, Object?>{
-            'user_id': nextUserId,
-            'entity_id': CounterEntityIds.defaultCounter,
-            'pipeline_seq': pipelineSeq,
-          },
-        );
-
-        // 2) PUSH / EXPORT
-        final exportUseCase = await ref.read(
-          exportLocalOperationsUseCaseProvider.future,
-        );
-
-        if (!isPipelineValid()) {
-          AppLogger.info(
-            component: AppLogComponent.sync,
-            message: 'Initial sync pipeline aborted before export.',
-            context: <String, Object?>{
-              'user_id': nextUserId,
-              'entity_id': CounterEntityIds.defaultCounter,
-              'pipeline_seq': pipelineSeq,
-            },
-          );
-          return;
-        }
-
-        await exportUseCase.execute(entityId: CounterEntityIds.defaultCounter);
-
-        if (!isPipelineValid()) {
-          AppLogger.info(
-            component: AppLogComponent.sync,
-            message: 'Initial sync pipeline aborted after export.',
-            context: <String, Object?>{
-              'user_id': nextUserId,
-              'entity_id': CounterEntityIds.defaultCounter,
-              'pipeline_seq': pipelineSeq,
-            },
-          );
-          return;
-        }
-
-        // 3) Read-model invalidate (важно для web)
-        ref.invalidate(counterStateProvider);
-
-        AppLogger.info(
-          component: AppLogComponent.sync,
-          message: 'Initial sync finished. CounterStateProvider invalidated.',
-          context: <String, Object?>{
-            'user_id': nextUserId,
-            'entity_id': CounterEntityIds.defaultCounter,
-            'pipeline_seq': pipelineSeq,
-          },
-        );
-
-        // 4) Realtime enable (A3 + B1 порядок)
-        ref
-            .read(realtimeGateControllerProvider.notifier)
-            .enable(reason: 'initial_sync_pull_and_export_finished');
-
-        AppLogger.info(
-          component: AppLogComponent.realtime,
-          message: 'A3/B1: realtime gate opened after pull + export.',
-          context: <String, Object?>{
-            'user_id': nextUserId,
-            'entity_id': CounterEntityIds.defaultCounter,
-            'pipeline_seq': pipelineSeq,
-          },
-        );
       } catch (e, st) {
         AppLogger.error(
           component: AppLogComponent.sync,
-          message: 'Initial sync pipeline failed (pull/export).',
+          message:
+              'Initial sync pipeline failed (pull/export). '
+              'attempt=$attempt/$maxAttempts',
           error: e,
           stackTrace: st,
           context: <String, Object?>{
@@ -252,8 +310,6 @@ class CounterInitialSyncController extends _$CounterInitialSyncController {
           },
         );
 
-        // Важно:
-        // - gate НЕ открываем, т.к. pipeline не завершился успешно.
         AppLogger.info(
           component: AppLogComponent.realtime,
           message: 'A3/B1: realtime gate remains closed due to failure.',
@@ -261,9 +317,21 @@ class CounterInitialSyncController extends _$CounterInitialSyncController {
             'user_id': nextUserId,
             'entity_id': CounterEntityIds.defaultCounter,
             'pipeline_seq': pipelineSeq,
+            'attempt': attempt,
+            'max_attempts': maxAttempts,
           },
         );
+
+        if (attempt >= maxAttempts || !isPipelineValid()) {
+          return;
+        }
+
+        await Future<void>.delayed(const Duration(seconds: 2));
       }
-    });
+    }
+
+    if (succeeded) {
+      _lastSyncedUserId = nextUserId;
+    }
   }
 }

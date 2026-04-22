@@ -70,8 +70,9 @@ class NeedSyncController extends _$NeedSyncController {
         state = false;
       }
 
-      // Важно: read-model должен пересчитаться под новым scope.
-      ref.invalidate(counterStateProvider);
+      // Read-model: [counterStateProvider] смотрит [localOpLogRepositoryProvider], тот
+      // — [supabaseUserIdProvider]. Смена user_id пересобирает localOpLog и сама
+      // инвалидирует counterState. Явный invalidate отсюда ломал граф (реентрантность).
 
       AppLogger.info(
         component: AppLogComponent.sync,
