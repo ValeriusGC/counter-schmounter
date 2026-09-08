@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import 'package:counter_schmounter/src/application/counter/providers/export_local_operations_use_case_provider.dart';
 import 'package:counter_schmounter/src/application/counter/providers/sync_counter_use_case_provider.dart';
 import 'package:counter_schmounter/src/domain/counter/constants/counter_entity_ids.dart';
 import 'package:counter_schmounter/src/infrastructure/auth/providers/supabase_user_id_provider.dart';
@@ -18,20 +17,12 @@ part 'counter_initial_sync_controller.g.dart';
 ///
 /// Назначение:
 /// - запускает стартовую синхронизацию на КАЖДЫЙ новый аккаунт (user_id);
-/// - обеспечивает правильный порядок (B1/A3):
-///   1) pull (fetch remote op-log → apply)
-///   2) push/export (export local ops → remote)
-///   3) invalidate read-model
-///   4) enable realtime gate
+/// - один обмен ulsync ([SyncCounterUseCase.execute] → `syncOnce`);
+/// - invalidate read-model;
+/// - enable realtime gate (шаг 16 снимет Realtime, gate пока оставляем).
 ///
 /// Триггер:
 /// - `ref.listen(..., fireImmediately: true)` на [supabaseUserIdProvider]
-/// - страховка: `ref.watch` того же провайдера + отложенный запуск (`Future(() async …)`), если realtime gate всё ещё закрыт
-///   (редкий порядок инициализации StreamProvider / холодный старт с уже восстановленной сессией).
-///
-/// Важно:
-/// - realtime НЕ включается, пока pipeline не завершён успешно;
-/// - при любой ошибке pipeline realtime gate остаётся закрытым.
 @Riverpod(keepAlive: true)
 class CounterInitialSyncController extends _$CounterInitialSyncController {
   String? _lastSyncedUserId;
@@ -46,8 +37,6 @@ class CounterInitialSyncController extends _$CounterInitialSyncController {
       unawaited(_handleSupabaseAuthAsync(previous, next));
     }, fireImmediately: true);
 
-    // Страховка поверх listen: один раз после того как AsyncValue содержит user_id,
-    // если gate ещё не открыт — форсим тот же обработчик (другие устройства / cold start).
     authSnapshot.maybeWhen(
       data: (userId) {
         if (userId == null) {
@@ -77,7 +66,6 @@ class CounterInitialSyncController extends _$CounterInitialSyncController {
     AsyncValue<String?>? previous,
     AsyncValue<String?> next,
   ) async {
-    // Первое fireImmediately может быть ещё AsyncLoading у StreamProvider.
     if (next.isLoading) {
       return;
     }
@@ -95,7 +83,6 @@ class CounterInitialSyncController extends _$CounterInitialSyncController {
       },
     );
 
-    // Logout -> переход в anonymous scope.
     if (nextUserId == null) {
       AppLogger.info(
         component: AppLogComponent.sync,
@@ -104,12 +91,9 @@ class CounterInitialSyncController extends _$CounterInitialSyncController {
       );
 
       _lastSyncedUserId = null;
-
-      // counterState обновится через localOpLogRepository (см. NeedSyncController).
       return;
     }
 
-    // Авторизованы. Если user_id не изменился и уже синкались — выходим.
     if (_lastSyncedUserId == nextUserId) {
       AppLogger.info(
         component: AppLogComponent.sync,
@@ -142,8 +126,6 @@ class CounterInitialSyncController extends _$CounterInitialSyncController {
       if (_pipelineSeq != pipelineSeq) {
         return false;
       }
-      // StreamProvider между await может ненадолго вернуться в AsyncLoading без asData —
-      // подстраховываемся текущей сессией из Supabase SDK.
       final asyncUid = ref.read(supabaseUserIdProvider).asData?.value;
       final sdkUid = Supabase.instance.client.auth.currentUser?.id;
       final currentUserId = asyncUid ?? sdkUid;
@@ -156,119 +138,30 @@ class CounterInitialSyncController extends _$CounterInitialSyncController {
       await localRepo.initialize();
 
       if (!isPipelineValid()) {
-        AppLogger.info(
-          component: AppLogComponent.sync,
-          message: 'Initial sync pipeline aborted after local repo init.',
-          context: <String, Object?>{
-            'user_id': nextUserId,
-            'entity_id': CounterEntityIds.defaultCounter,
-            'pipeline_seq': pipelineSeq,
-          },
-        );
         return false;
       }
-
-      AppLogger.info(
-        component: AppLogComponent.sync,
-        message: 'Local op-log repository initialized for current scope.',
-        context: <String, Object?>{
-          'user_id': nextUserId,
-          'entity_id': CounterEntityIds.defaultCounter,
-          'pipeline_seq': pipelineSeq,
-        },
-      );
 
       final syncUseCase = await ref.read(syncCounterUseCaseProvider.future);
 
       if (!isPipelineValid()) {
-        AppLogger.info(
-          component: AppLogComponent.sync,
-          message: 'Initial sync pipeline aborted before pull.',
-          context: <String, Object?>{
-            'user_id': nextUserId,
-            'entity_id': CounterEntityIds.defaultCounter,
-            'pipeline_seq': pipelineSeq,
-          },
-        );
         return false;
       }
 
-      await syncUseCase.execute(entityId: CounterEntityIds.defaultCounter);
+      await syncUseCase.execute();
 
       if (!isPipelineValid()) {
-        AppLogger.info(
-          component: AppLogComponent.sync,
-          message: 'Initial sync pipeline aborted after pull.',
-          context: <String, Object?>{
-            'user_id': nextUserId,
-            'entity_id': CounterEntityIds.defaultCounter,
-            'pipeline_seq': pipelineSeq,
-          },
-        );
-        return false;
-      }
-
-      AppLogger.info(
-        component: AppLogComponent.sync,
-        message: 'Initial pull finished. Starting export (push).',
-        context: <String, Object?>{
-          'user_id': nextUserId,
-          'entity_id': CounterEntityIds.defaultCounter,
-          'pipeline_seq': pipelineSeq,
-        },
-      );
-
-      final exportUseCase = await ref.read(
-        exportLocalOperationsUseCaseProvider.future,
-      );
-
-      if (!isPipelineValid()) {
-        AppLogger.info(
-          component: AppLogComponent.sync,
-          message: 'Initial sync pipeline aborted before export.',
-          context: <String, Object?>{
-            'user_id': nextUserId,
-            'entity_id': CounterEntityIds.defaultCounter,
-            'pipeline_seq': pipelineSeq,
-          },
-        );
-        return false;
-      }
-
-      await exportUseCase.execute(entityId: CounterEntityIds.defaultCounter);
-
-      if (!isPipelineValid()) {
-        AppLogger.info(
-          component: AppLogComponent.sync,
-          message: 'Initial sync pipeline aborted after export.',
-          context: <String, Object?>{
-            'user_id': nextUserId,
-            'entity_id': CounterEntityIds.defaultCounter,
-            'pipeline_seq': pipelineSeq,
-          },
-        );
         return false;
       }
 
       ref.invalidate(counterStateProvider);
 
-      AppLogger.info(
-        component: AppLogComponent.sync,
-        message: 'Initial sync finished. CounterStateProvider invalidated.',
-        context: <String, Object?>{
-          'user_id': nextUserId,
-          'entity_id': CounterEntityIds.defaultCounter,
-          'pipeline_seq': pipelineSeq,
-        },
-      );
-
       ref
           .read(realtimeGateControllerProvider.notifier)
-          .enable(reason: 'initial_sync_pull_and_export_finished');
+          .enable(reason: 'initial_sync_ulsync_finished');
 
       AppLogger.info(
         component: AppLogComponent.realtime,
-        message: 'A3/B1: realtime gate opened after pull + export.',
+        message: 'Realtime gate opened after initial ulsync sync.',
         context: <String, Object?>{
           'user_id': nextUserId,
           'entity_id': CounterEntityIds.defaultCounter,
@@ -299,7 +192,7 @@ class CounterInitialSyncController extends _$CounterInitialSyncController {
         AppLogger.error(
           component: AppLogComponent.sync,
           message:
-              'Initial sync pipeline failed (pull/export). '
+              'Initial sync pipeline failed (ulsync). '
               'attempt=$attempt/$maxAttempts',
           error: e,
           stackTrace: st,
@@ -307,18 +200,6 @@ class CounterInitialSyncController extends _$CounterInitialSyncController {
             'user_id': nextUserId,
             'entity_id': CounterEntityIds.defaultCounter,
             'pipeline_seq': pipelineSeq,
-          },
-        );
-
-        AppLogger.info(
-          component: AppLogComponent.realtime,
-          message: 'A3/B1: realtime gate remains closed due to failure.',
-          context: <String, Object?>{
-            'user_id': nextUserId,
-            'entity_id': CounterEntityIds.defaultCounter,
-            'pipeline_seq': pipelineSeq,
-            'attempt': attempt,
-            'max_attempts': maxAttempts,
           },
         );
 
