@@ -28,7 +28,9 @@ void main() {
 
     // Настраиваем мок LocalOpLogRepository для инициализации
     when(() => mockLocalOpLogRepository.initialize()).thenAnswer((_) async {});
-    when(() => mockLocalOpLogRepository.getAll()).thenAnswer((_) async => <CounterOperation>[]);
+    when(
+      () => mockLocalOpLogRepository.getAll(),
+    ).thenAnswer((_) async => <CounterOperation>[]);
 
     container = ProviderContainer(
       overrides: [
@@ -74,10 +76,14 @@ void main() {
           clientId: 'test-client-id',
           createdAt: DateTime.now().toUtc(),
         );
-        
-        when(() => mockIncrementCounterUseCase.execute()).thenAnswer((_) async => operation);
-        
-        await container.read(counterViewModelProvider.future); // Ждем инициализации
+
+        when(
+          () => mockIncrementCounterUseCase.execute(),
+        ).thenAnswer((_) async => operation);
+
+        await container.read(
+          counterViewModelProvider.future,
+        ); // Ждем инициализации
         final viewModel = container.read(counterViewModelProvider.notifier);
 
         // Act
@@ -91,7 +97,9 @@ void main() {
 
       test('can be called multiple times', () async {
         // Arrange
-        await container.read(counterViewModelProvider.future); // Ждем инициализации
+        await container.read(
+          counterViewModelProvider.future,
+        ); // Ждем инициализации
         final operations = List.generate(
           3,
           (index) => IncrementOperation(
@@ -117,13 +125,17 @@ void main() {
 
       test('does not affect navigation action', () async {
         // Arrange
-        await container.read(counterViewModelProvider.future); // Ждем инициализации
+        await container.read(
+          counterViewModelProvider.future,
+        ); // Ждем инициализации
         final operation = IncrementOperation(
           opId: const Uuid().v4(),
           clientId: 'test-client-id',
           createdAt: DateTime.now().toUtc(),
         );
-        when(() => mockIncrementCounterUseCase.execute()).thenAnswer((_) async => operation);
+        when(
+          () => mockIncrementCounterUseCase.execute(),
+        ).thenAnswer((_) async => operation);
         final viewModel = container.read(counterViewModelProvider.notifier);
 
         // Act
@@ -137,13 +149,17 @@ void main() {
 
       test('does not affect sign out state', () async {
         // Arrange
-        await container.read(counterViewModelProvider.future); // Ждем инициализации
+        await container.read(
+          counterViewModelProvider.future,
+        ); // Ждем инициализации
         final operation = IncrementOperation(
           opId: const Uuid().v4(),
           clientId: 'test-client-id',
           createdAt: DateTime.now().toUtc(),
         );
-        when(() => mockIncrementCounterUseCase.execute()).thenAnswer((_) async => operation);
+        when(
+          () => mockIncrementCounterUseCase.execute(),
+        ).thenAnswer((_) async => operation);
         final viewModel = container.read(counterViewModelProvider.notifier);
 
         // Act
@@ -159,8 +175,12 @@ void main() {
     group('signOut', () {
       test('successfully signs out and sets navigation action', () async {
         // Arrange
-        await container.read(counterViewModelProvider.future); // Ждем инициализации
-        when(() => mockSignOutUseCase.execute()).thenAnswer((_) async => Future.value());
+        await container.read(
+          counterViewModelProvider.future,
+        ); // Ждем инициализации
+        when(
+          () => mockSignOutUseCase.execute(),
+        ).thenAnswer((_) async => Future.value());
         final viewModel = container.read(counterViewModelProvider.notifier);
 
         // Act
@@ -178,7 +198,9 @@ void main() {
 
       test('sets loading state during sign out', () async {
         // Arrange
-        await container.read(counterViewModelProvider.future); // Ждем инициализации
+        await container.read(
+          counterViewModelProvider.future,
+        ); // Ждем инициализации
         final completer = Completer<void>();
         when(() => mockSignOutUseCase.execute()).thenAnswer((_) async {
           await completer.future;
@@ -188,13 +210,12 @@ void main() {
 
         // Используем listen для отслеживания изменений состояния
         AsyncValue<CounterState>? capturedState;
-        final subscription = container.listen(
-          counterViewModelProvider,
-          (previous, next) {
-            capturedState = next;
-          },
-          fireImmediately: true,
-        );
+        final subscription = container.listen(counterViewModelProvider, (
+          previous,
+          next,
+        ) {
+          capturedState = next;
+        }, fireImmediately: true);
 
         // Act - запускаем signOut, но не ждем завершения
         final future = viewModel.signOut();
@@ -202,7 +223,10 @@ void main() {
         // Assert - ждем, пока состояние обновится через listen
         // Используем цикл с таймаутом для ожидания обновления состояния
         var attempts = 0;
-        while (attempts < 50 && (capturedState == null || !capturedState!.hasValue || !capturedState!.value!.isSigningOut)) {
+        while (attempts < 50 &&
+            (capturedState == null ||
+                !capturedState!.hasValue ||
+                !capturedState!.value!.isSigningOut)) {
           await Future.delayed(const Duration(milliseconds: 10));
           attempts++;
         }
@@ -210,9 +234,17 @@ void main() {
         subscription.close();
 
         expect(capturedState, isNotNull);
-        expect(capturedState!.hasValue, isTrue, reason: 'State should have value');
+        expect(
+          capturedState!.hasValue,
+          isTrue,
+          reason: 'State should have value',
+        );
         final loadingState = capturedState!.value!;
-        expect(loadingState.isSigningOut, isTrue, reason: 'Should be in loading state during sign out');
+        expect(
+          loadingState.isSigningOut,
+          isTrue,
+          reason: 'Should be in loading state during sign out',
+        );
         expect(loadingState.navigationAction, NavigationAction.none);
 
         // Complete the sign out
@@ -222,7 +254,9 @@ void main() {
 
       test('handles sign out error and sets error state', () async {
         // Arrange
-        await container.read(counterViewModelProvider.future); // Ждем инициализации
+        await container.read(
+          counterViewModelProvider.future,
+        ); // Ждем инициализации
         final exception = Exception('Sign out failed');
         when(() => mockSignOutUseCase.execute()).thenThrow(exception);
         final viewModel = container.read(counterViewModelProvider.notifier);
@@ -241,7 +275,9 @@ void main() {
 
       test('resets navigation action to none on error', () async {
         // Arrange
-        await container.read(counterViewModelProvider.future); // Ждем инициализации
+        await container.read(
+          counterViewModelProvider.future,
+        ); // Ждем инициализации
         when(() => mockSignOutUseCase.execute()).thenThrow(Exception('Error'));
         final viewModel = container.read(counterViewModelProvider.notifier);
 
@@ -256,8 +292,12 @@ void main() {
 
       test('can be called multiple times sequentially', () async {
         // Arrange
-        await container.read(counterViewModelProvider.future); // Ждем инициализации
-        when(() => mockSignOutUseCase.execute()).thenAnswer((_) async => Future.value());
+        await container.read(
+          counterViewModelProvider.future,
+        ); // Ждем инициализации
+        when(
+          () => mockSignOutUseCase.execute(),
+        ).thenAnswer((_) async => Future.value());
         final viewModel = container.read(counterViewModelProvider.notifier);
 
         // Act
@@ -300,7 +340,9 @@ void main() {
     group('combined operations', () {
       test('increment and sign out work independently', () async {
         // Arrange
-        await container.read(counterViewModelProvider.future); // Ждем инициализации
+        await container.read(
+          counterViewModelProvider.future,
+        ); // Ждем инициализации
         final operations = List.generate(
           2,
           (index) => IncrementOperation(
@@ -313,7 +355,9 @@ void main() {
         when(() => mockIncrementCounterUseCase.execute()).thenAnswer((_) async {
           return operations[callCount++];
         });
-        when(() => mockSignOutUseCase.execute()).thenAnswer((_) async => Future.value());
+        when(
+          () => mockSignOutUseCase.execute(),
+        ).thenAnswer((_) async => Future.value());
         final viewModel = container.read(counterViewModelProvider.notifier);
 
         // Act
@@ -333,7 +377,9 @@ void main() {
 
       test('sign out error does not affect increment', () async {
         // Arrange
-        await container.read(counterViewModelProvider.future); // Ждем инициализации
+        await container.read(
+          counterViewModelProvider.future,
+        ); // Ждем инициализации
         final operations = List.generate(
           2,
           (index) => IncrementOperation(

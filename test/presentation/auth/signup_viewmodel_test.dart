@@ -19,9 +19,7 @@ void main() {
   setUp(() {
     final mockSignUpUseCase = MockSignUpUseCase();
     container = ProviderContainer(
-      overrides: [
-        createSignUpUseCaseOverride(mockSignUpUseCase),
-      ],
+      overrides: [createSignUpUseCaseOverride(mockSignUpUseCase)],
     );
   });
 
@@ -226,7 +224,8 @@ void main() {
       test('successfully signs up and sets navigation action', () async {
         // Arrange
         final viewModel = container.read(signupViewModelProvider.notifier);
-        final mockSignUpUseCase = container.read(signUpUseCaseProvider) as MockSignUpUseCase;
+        final mockSignUpUseCase =
+            container.read(signUpUseCaseProvider) as MockSignUpUseCase;
         viewModel.updateEmail('test@example.com');
         viewModel.updatePassword('password123');
 
@@ -256,7 +255,8 @@ void main() {
       test('trims email before signing up', () async {
         // Arrange
         final viewModel = container.read(signupViewModelProvider.notifier);
-        final mockSignUpUseCase = container.read(signUpUseCaseProvider) as MockSignUpUseCase;
+        final mockSignUpUseCase =
+            container.read(signUpUseCaseProvider) as MockSignUpUseCase;
         viewModel.updateEmail('  test@example.com  ');
         viewModel.updatePassword('password123');
 
@@ -282,7 +282,8 @@ void main() {
       test('sets loading state during sign up', () async {
         // Arrange
         final viewModel = container.read(signupViewModelProvider.notifier);
-        final mockSignUpUseCase = container.read(signUpUseCaseProvider) as MockSignUpUseCase;
+        final mockSignUpUseCase =
+            container.read(signUpUseCaseProvider) as MockSignUpUseCase;
         viewModel.updateEmail('test@example.com');
         viewModel.updatePassword('password123');
 
@@ -299,13 +300,12 @@ void main() {
 
         // Используем listen для отслеживания изменений состояния
         SignupState? capturedState;
-        final subscription = container.listen(
-          signupViewModelProvider,
-          (previous, next) {
-            capturedState = next;
-          },
-          fireImmediately: true,
-        );
+        final subscription = container.listen(signupViewModelProvider, (
+          previous,
+          next,
+        ) {
+          capturedState = next;
+        }, fireImmediately: true);
 
         // Act - запускаем signUp, но не ждем завершения
         final future = viewModel.signUp();
@@ -313,7 +313,8 @@ void main() {
         // Assert - ждем, пока состояние обновится через listen
         // Используем цикл с таймаутом для ожидания обновления состояния
         var attempts = 0;
-        while (attempts < 50 && (capturedState == null || !capturedState!.isLoading)) {
+        while (attempts < 50 &&
+            (capturedState == null || !capturedState!.isLoading)) {
           await Future.delayed(const Duration(milliseconds: 10));
           attempts++;
         }
@@ -321,7 +322,11 @@ void main() {
         subscription.close();
 
         expect(capturedState, isNotNull);
-        expect(capturedState!.isLoading, isTrue, reason: 'Should be in loading state during sign up');
+        expect(
+          capturedState!.isLoading,
+          isTrue,
+          reason: 'Should be in loading state during sign up',
+        );
         expect(capturedState!.navigationAction, NavigationAction.none);
 
         // Complete the sign up
@@ -332,7 +337,8 @@ void main() {
       test('handles sign up error and sets error state', () async {
         // Arrange
         final viewModel = container.read(signupViewModelProvider.notifier);
-        final mockSignUpUseCase = container.read(signUpUseCaseProvider) as MockSignUpUseCase;
+        final mockSignUpUseCase =
+            container.read(signUpUseCaseProvider) as MockSignUpUseCase;
         viewModel.updateEmail('test@example.com');
         viewModel.updatePassword('password123');
 
@@ -357,7 +363,8 @@ void main() {
       test('handles AuthException error', () async {
         // Arrange
         final viewModel = container.read(signupViewModelProvider.notifier);
-        final mockSignUpUseCase = container.read(signUpUseCaseProvider) as MockSignUpUseCase;
+        final mockSignUpUseCase =
+            container.read(signUpUseCaseProvider) as MockSignUpUseCase;
         viewModel.updateEmail('test@example.com');
         viewModel.updatePassword('password123');
 
@@ -382,7 +389,8 @@ void main() {
       test('resets navigation action to none on error', () async {
         // Arrange
         final viewModel = container.read(signupViewModelProvider.notifier);
-        final mockSignUpUseCase = container.read(signUpUseCaseProvider) as MockSignUpUseCase;
+        final mockSignUpUseCase =
+            container.read(signUpUseCaseProvider) as MockSignUpUseCase;
         viewModel.updateEmail('test@example.com');
         viewModel.updatePassword('password123');
 
@@ -404,7 +412,8 @@ void main() {
       test('handles empty email and password', () async {
         // Arrange
         final viewModel = container.read(signupViewModelProvider.notifier);
-        final mockSignUpUseCase = container.read(signUpUseCaseProvider) as MockSignUpUseCase;
+        final mockSignUpUseCase =
+            container.read(signUpUseCaseProvider) as MockSignUpUseCase;
         when(
           () => mockSignUpUseCase.execute(
             email: any(named: 'email'),
@@ -417,10 +426,7 @@ void main() {
 
         // Assert
         verify(
-          () => mockSignUpUseCase.execute(
-            email: '',
-            password: '',
-          ),
+          () => mockSignUpUseCase.execute(email: '', password: ''),
         ).called(1);
       });
     });
@@ -429,7 +435,8 @@ void main() {
       test('resets navigation action to none', () async {
         // Arrange
         final viewModel = container.read(signupViewModelProvider.notifier);
-        final mockSignUpUseCase = container.read(signUpUseCaseProvider) as MockSignUpUseCase;
+        final mockSignUpUseCase =
+            container.read(signUpUseCaseProvider) as MockSignUpUseCase;
         viewModel.updateEmail('test@example.com');
         viewModel.updatePassword('password123');
 
@@ -442,7 +449,10 @@ void main() {
 
         await viewModel.signUp();
         final stateAfterSignUp = container.read(signupViewModelProvider);
-        expect(stateAfterSignUp.navigationAction, NavigationAction.navigateToLogin);
+        expect(
+          stateAfterSignUp.navigationAction,
+          NavigationAction.navigateToLogin,
+        );
 
         // Act
         viewModel.resetNavigation();
@@ -468,4 +478,3 @@ void main() {
     });
   });
 }
-

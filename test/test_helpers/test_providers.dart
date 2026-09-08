@@ -31,19 +31,24 @@ dynamic createSignOutUseCaseOverride(MockSignOutUseCase mockUseCase) {
 
 /// Test provider override for ClientIdentityService
 /// Allows injecting a mock service for testing
-dynamic createClientIdentityServiceOverride(MockClientIdentityService mockService) {
+dynamic createClientIdentityServiceOverride(
+  MockClientIdentityService mockService,
+) {
   return clientIdentityServiceProvider.overrideWithValue(mockService);
 }
 
 /// Test provider override for IncrementCounterUseCase
 /// Allows injecting a mock use case for testing
-dynamic createIncrementCounterUseCaseOverride(MockIncrementCounterUseCase mockUseCase) {
+dynamic createIncrementCounterUseCaseOverride(
+  MockIncrementCounterUseCase mockUseCase,
+) {
   return incrementCounterUseCaseProvider.overrideWithValue(mockUseCase);
 }
 
 /// Test provider override for LocalOpLogRepository
 /// Allows injecting a mock repository for testing
-dynamic createLocalOpLogRepositoryOverride(MockLocalOpLogRepository mockRepository) {
+dynamic createLocalOpLogRepositoryOverride(
+  MockLocalOpLogRepository mockRepository,
+) {
   return localOpLogRepositoryProvider.overrideWithValue(mockRepository);
 }
-
