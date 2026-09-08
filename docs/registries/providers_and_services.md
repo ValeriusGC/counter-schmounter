@@ -15,12 +15,10 @@
 | `authStateListenableProvider` | `lib/src/infrastructure/auth/providers/auth_state_listenable_provider.dart` | Listenable для go_router refresh | Роутер при смене сессии |
 | `clientIdentityServiceProvider` | `lib/src/infrastructure/shared/providers/client_identity_service_provider.dart` | Стабильный `clientId` установки | Операции счётчика, будущий ulsync `sourceId` |
 | `localOpLogRepositoryProvider` | `lib/src/infrastructure/counter/providers/local_op_log_repository_provider.dart` | Локальный журнал операций | Инкремент, sync, адаптер ulsync |
-| `remoteOpLogRepositoryProvider` | `lib/src/infrastructure/counter/providers/remote_op_log_repository_provider.dart` | Pull из Supabase (удаляется в шаге 15) | Только до миграции на ulsync |
-| `remoteOpLogExportRepositoryProvider` | `lib/src/infrastructure/counter/providers/remote_op_log_export_repository_provider.dart` | Push в Supabase (удаляется в шаге 15) | Только до миграции на ulsync |
+| `ulsyncClientProvider` | `lib/src/infrastructure/sync/providers/ulsync_client_provider.dart` | Клиент ulsync для текущего пользователя | Sync, markChanged после инкремента |
 | `counterStateProvider` | `lib/src/infrastructure/counter/providers/counter_state_provider.dart` | Агрегированное значение счётчика для UI | Экран счётчика |
-| `incrementCounterUseCaseProvider` | `lib/src/infrastructure/counter/providers/increment_counter_use_case_provider.dart` | Use case инкремента | ViewModel счётчика |
-| `syncCounterUseCaseProvider` | `lib/src/application/counter/providers/sync_counter_use_case_provider.dart` | Обмен с удалённым журналом | NeedSync, initial sync |
-| `exportLocalOperationsUseCaseProvider` | `lib/src/application/counter/providers/export_local_operations_use_case_provider.dart` | Export в Supabase (удаляется в шаге 15) | Только до миграции |
+| `incrementCounterUseCaseProvider` | `lib/src/infrastructure/counter/providers/increment_counter_use_case_provider.dart` | Use case инкремента + markChanged | ViewModel счётчика |
+| `syncCounterUseCaseProvider` | `lib/src/application/counter/providers/sync_counter_use_case_provider.dart` | Один обмен ulsync (`syncOnce`) | NeedSync, initial sync |
 | `syncStateRepositoryProvider` | `lib/src/infrastructure/sync/providers/sync_state_repository_provider.dart` | Маркеры lastSynced/lastExported | До шага 15 — счётчик; далее без вызовов из счётчика |
 | `needSyncControllerProvider` | `lib/src/infrastructure/sync/controllers/need_sync_controller.dart` | Debounce sync после инкремента | После плюса на экране |
 | `counterInitialSyncControllerProvider` | `lib/src/infrastructure/sync/controllers/counter_initial_sync_controller.dart` | Initial sync при старте/логине | Холодный старт с сессией |
