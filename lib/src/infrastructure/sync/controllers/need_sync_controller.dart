@@ -5,7 +5,9 @@ import 'package:counter_schmounter/src/infrastructure/auth/providers/supabase_us
 import 'package:counter_schmounter/src/infrastructure/counter/providers/counter_state_provider.dart';
 import 'package:counter_schmounter/src/infrastructure/shared/logging/app_logger.dart';
 import 'package:counter_schmounter/src/infrastructure/shared/utils/debouncer.dart';
+import 'package:counter_schmounter/src/infrastructure/sync/controllers/counter_sync_coordinator.dart';
 import 'package:counter_schmounter/src/infrastructure/sync/providers/ulsync_client_provider.dart';
+import 'package:counter_schmounter/src/infrastructure/sync/sync_failure_logging.dart';
 
 part 'need_sync_controller.g.dart';
 
@@ -158,7 +160,9 @@ class NeedSyncController extends _$NeedSyncController {
 
         final useCase = await ref.read(syncCounterUseCaseProvider.future);
 
-        await useCase.execute();
+        await ref.read(counterSyncCoordinatorProvider.notifier).runOnce(() async {
+          await useCase.execute();
+        });
 
         ref.invalidate(counterStateProvider);
 
@@ -184,8 +188,7 @@ class NeedSyncController extends _$NeedSyncController {
           },
         );
       } catch (e, st) {
-        AppLogger.error(
-          component: AppLogComponent.sync,
+        logSyncFailure(
           message: 'Sync failed from NeedSyncController.',
           error: e,
           stackTrace: st,

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:uuid/uuid.dart';
 import 'package:ulsync/ulsync.dart';
 
@@ -37,7 +39,8 @@ class IncrementCounterUseCase {
   ///
   /// Создает новую [IncrementOperation] с уникальным идентификатором,
   /// текущим временем и идентификатором клиента, затем сохраняет её
-  /// в [LocalOpLogRepository]. Порядок: сначала append, затем [UlsyncClient.markChanged].
+  /// в [LocalOpLogRepository]. Порядок: сначала append, затем [UlsyncClient.markChanged]
+  /// (без await — ulsync сериализует markChanged и syncOnce; ожидание блокирует UI).
   ///
   /// Возвращает созданную операцию.
   Future<IncrementOperation> execute() async {
@@ -61,9 +64,11 @@ class IncrementCounterUseCase {
 
     final client = await _syncClientOf();
     if (client != null) {
-      await client.markChanged(
-        entityType: 'counter_operation',
-        id: operation.opId,
+      unawaited(
+        client.markChanged(
+          entityType: 'counter_operation',
+          id: operation.opId,
+        ),
       );
     }
 

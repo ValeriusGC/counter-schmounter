@@ -15,9 +15,11 @@ part 'increment_counter_use_case_provider.g.dart';
 IncrementCounterUseCase incrementCounterUseCase(Ref ref) {
   final clientIdentityService = ref.watch(clientIdentityServiceProvider);
   final localOpLogRepository = ref.watch(localOpLogRepositoryProvider);
+  // container переживает dispose Ref autoDispose-провайдера после await в execute().
+  final container = ref.container;
   return IncrementCounterUseCase(
     clientIdentityService,
     localOpLogRepository,
-    syncClientOf: () => ref.read(ulsyncClientProvider.future),
+    syncClientOf: () => container.read(ulsyncClientProvider.future),
   );
 }

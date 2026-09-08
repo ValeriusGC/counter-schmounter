@@ -10,6 +10,8 @@ import 'package:counter_schmounter/src/infrastructure/counter/providers/counter_
 import 'package:counter_schmounter/src/infrastructure/counter/providers/local_op_log_repository_provider.dart';
 import 'package:counter_schmounter/src/infrastructure/realtime/controllers/realtime_gate_controller.dart';
 import 'package:counter_schmounter/src/infrastructure/shared/logging/app_logger.dart';
+import 'package:counter_schmounter/src/infrastructure/sync/controllers/counter_sync_coordinator.dart';
+import 'package:counter_schmounter/src/infrastructure/sync/sync_failure_logging.dart';
 
 part 'counter_initial_sync_controller.g.dart';
 
@@ -29,37 +31,13 @@ class CounterInitialSyncController extends _$CounterInitialSyncController {
 
   int _pipelineSeq = 0;
 
+  Future<void>? _activePipeline;
+
   @override
   void build() {
-    final authSnapshot = ref.watch(supabaseUserIdProvider);
-
     ref.listen<AsyncValue<String?>>(supabaseUserIdProvider, (previous, next) {
       unawaited(_handleSupabaseAuthAsync(previous, next));
     }, fireImmediately: true);
-
-    authSnapshot.maybeWhen(
-      data: (userId) {
-        if (userId == null) {
-          return;
-        }
-        unawaited(
-          Future<void>(() async {
-            if (!ref.mounted) {
-              return;
-            }
-            final gateOpen = ref.read(realtimeGateControllerProvider);
-            if (gateOpen && _lastSyncedUserId == userId) {
-              return;
-            }
-            await _handleSupabaseAuthAsync(
-              null,
-              ref.read(supabaseUserIdProvider),
-            );
-          }),
-        );
-      },
-      orElse: () {},
-    );
   }
 
   Future<void> _handleSupabaseAuthAsync(
@@ -106,6 +84,13 @@ class CounterInitialSyncController extends _$CounterInitialSyncController {
       return;
     }
 
+    if (_activePipeline != null) {
+      await _activePipeline;
+      if (_lastSyncedUserId == nextUserId) {
+        return;
+      }
+    }
+
     _pipelineSeq += 1;
     final int pipelineSeq = _pipelineSeq;
 
@@ -119,6 +104,21 @@ class CounterInitialSyncController extends _$CounterInitialSyncController {
       },
     );
 
+    _activePipeline = _runInitialSyncPipeline(
+      nextUserId: nextUserId,
+      pipelineSeq: pipelineSeq,
+    );
+    try {
+      await _activePipeline;
+    } finally {
+      _activePipeline = null;
+    }
+  }
+
+  Future<void> _runInitialSyncPipeline({
+    required String nextUserId,
+    required int pipelineSeq,
+  }) async {
     bool isPipelineValid() {
       if (!ref.mounted) {
         return false;
@@ -147,7 +147,9 @@ class CounterInitialSyncController extends _$CounterInitialSyncController {
         return false;
       }
 
-      await syncUseCase.execute();
+      await ref.read(counterSyncCoordinatorProvider.notifier).runOnce(() async {
+        await syncUseCase.execute();
+      });
 
       if (!isPipelineValid()) {
         return false;
@@ -189,8 +191,7 @@ class CounterInitialSyncController extends _$CounterInitialSyncController {
           return;
         }
       } catch (e, st) {
-        AppLogger.error(
-          component: AppLogComponent.sync,
+        logSyncFailure(
           message:
               'Initial sync pipeline failed (ulsync). '
               'attempt=$attempt/$maxAttempts',

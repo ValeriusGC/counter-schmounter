@@ -31,19 +31,28 @@
 
 ### Адрес сервера
 
-Задаётся при запуске:
+Сервер ulsync поднимает **два** HTTP-endpoint'а:
+
+| Порт | Bind | Кто использует |
+|------|------|----------------|
+| **8080** | `0.0.0.0` | Flutter-приложение (`push` / `pull`) |
+| **8081** | `127.0.0.1` | Админка в браузере хоста: `http://127.0.0.1:8081/admin` (проверка access_token) |
+
+Приложение ходит **только на 8080**. Админка на 8081 с симулятора/телефона недоступна — это нормально.
+
+Значение по умолчанию в коде выбирается по платформе (`lib/src/infrastructure/sync/ulsync_base_url.dart`):
+
+| Платформа | URL без dart-define |
+|-----------|---------------------|
+| Android-эмулятор | `http://10.0.2.2:8080` |
+| iOS-симулятор, macOS, desktop | `http://127.0.0.1:8080` |
+| Физическое устройство в LAN | `--dart-define=ULSYNC_BASE_URL=http://<IP-машины>:8080` |
+
+Переопределение вручную:
 
 ```bash
 --dart-define=ULSYNC_BASE_URL=http://...
 ```
-
-Значение по умолчанию в коде — `http://10.0.2.2:8080` (loopback машины-хозяина **для Android-эмулятора**).
-
-| Платформа | Типичный URL |
-|-----------|----------------|
-| Android-эмулятор | default, без dart-define |
-| iOS-симулятор, macOS | `http://127.0.0.1:8080` |
-| Физическое устройство в LAN | `http://<IP-машины>:8080` (сервер слушает `0.0.0.0:8080`) |
 
 ### Запуск приложения
 
@@ -56,12 +65,11 @@ flutter run -d emulator-5554 \
   --dart-define=SU="$SU" \
   --dart-define=SAK="$SAK"
 
-# окно 2 — iOS simulator
+# окно 2 — iOS simulator (dart-define для ulsync не обязателен с платформенным default)
 cd /Users/vvk/AndroidStudioProjects/r/counter_schmounter
 flutter run -d iPhone \
   --dart-define=SU="$SU" \
-  --dart-define=SAK="$SAK" \
-  --dart-define=ULSYNC_BASE_URL=http://127.0.0.1:8080
+  --dart-define=SAK="$SAK"
 ```
 
 ### Сервер и JWT

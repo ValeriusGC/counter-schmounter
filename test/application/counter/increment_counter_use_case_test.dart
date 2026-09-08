@@ -5,7 +5,6 @@ import 'package:sembast/sembast_memory.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:counter_schmounter/src/application/counter/use_cases/increment_counter_use_case.dart';
 import 'package:counter_schmounter/src/domain/counter/operations/increment_operation.dart';
-import 'package:counter_schmounter/src/infrastructure/counter/codecs/counter_operation_codec.dart';
 import 'package:counter_schmounter/src/infrastructure/counter/repositories/local_op_log_repository_impl.dart';
 import 'package:counter_schmounter/src/infrastructure/sync/ulsync_client_factory.dart';
 import '../../test_helpers/fake_sync_transport.dart';

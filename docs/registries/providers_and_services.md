@@ -1,8 +1,8 @@
 # Реестр: провайдеры и сервисы
 
 **Дата создания:** 2026-09-08 15:08:08 +0300  
-**Последнее обновление:** 2026-09-08 15:08:08 +0300  
-**Версия:** 1
+**Последнее обновление:** 2026-09-08 16:01:21 +0300  
+**Версия:** 2
 
 Перед новым переиспользуемым провайдером или сервисом — проверить таблицу и grep по `lib/`.
 
@@ -21,6 +21,7 @@
 | `syncCounterUseCaseProvider` | `lib/src/application/counter/providers/sync_counter_use_case_provider.dart` | Один обмен ulsync (`syncOnce`) | NeedSync, initial sync |
 | `syncStateRepositoryProvider` | `lib/src/infrastructure/sync/providers/sync_state_repository_provider.dart` | Маркеры lastSynced/lastExported | До шага 15 — счётчик; далее без вызовов из счётчика |
 | `needSyncControllerProvider` | `lib/src/infrastructure/sync/controllers/need_sync_controller.dart` | Debounce sync после инкремента | После плюса на экране |
+| `counterSyncCoordinatorProvider` | `lib/src/infrastructure/sync/controllers/counter_sync_coordinator.dart` | Mutex одного `syncOnce` для счётчика | Initial sync, NeedSync |
 | `counterInitialSyncControllerProvider` | `lib/src/infrastructure/sync/controllers/counter_initial_sync_controller.dart` | Initial sync при старте/логине | Холодный старт с сессией |
 | `realtimeGateControllerProvider` | `lib/src/infrastructure/realtime/controllers/realtime_gate_controller.dart` | Включает Realtime после initial sync | Шаг 16 не трогать в 15 |
 | `counterRealtimeEventsServiceProvider` | `lib/src/infrastructure/realtime/services/counter_realtime_events_service.dart` | Подписка Realtime на таблицу | Шаг 16 |
