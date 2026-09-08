@@ -1,0 +1,26 @@
+---
+description: Не изобретать велосипед — сначала реестры, pub.dev, docs библиотек, community patterns.
+globs: lib/**/*.dart, packages/**/*.dart
+alwaysApply: false
+---
+
+# Без велосипедов
+
+Перед реализацией с нуля:
+
+1. `docs/registries/` + grep по проекту
+2. Документация уже используемых пакетов (Riverpod, go_router, dio и т.д.)
+3. MCP `pub_dev_search` или pub.dev — готовое решение
+4. Паттерны тестирования: существующие тесты в `test/`, skills `dart-add-unit-test`, community examples для Riverpod/mockito
+
+## Особенно для
+
+- Диалоги, bottom sheets, форматтеры — см. реестры
+- Провайдеры и async — idiomatic Riverpod, не самописные обёртки без причины
+- Layout issues — skill `flutter-fix-layout-issues` + MCP, не костыли
+
+## Когда свой код оправдан
+
+- Нет подходящего пакета после проверки
+- Пакет не стыкуется с архитектурой проекта
+- Нужен тонкий project-specific wrapper — зафиксировать в реестре
