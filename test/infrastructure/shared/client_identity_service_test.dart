@@ -95,11 +95,13 @@ void main() {
         // Act & Assert
         expect(
           () => newService.clientId,
-          throwsA(isA<StateError>().having(
-            (e) => e.message,
-            'message',
-            contains('not initialized'),
-          )),
+          throwsA(
+            isA<StateError>().having(
+              (e) => e.message,
+              'message',
+              contains('not initialized'),
+            ),
+          ),
         );
       });
 
@@ -113,7 +115,14 @@ void main() {
 
         // Assert
         // UUID v4 format: 8-4-4-4-12 hex digits
-        expect(clientId, matches(RegExp(r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$')));
+        expect(
+          clientId,
+          matches(
+            RegExp(
+              r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',
+            ),
+          ),
+        );
       });
     });
 
@@ -142,9 +151,15 @@ void main() {
 
         // Assert - should be valid UUID
         expect(id1, isNotEmpty);
-        expect(id1, matches(RegExp(r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$')));
+        expect(
+          id1,
+          matches(
+            RegExp(
+              r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',
+            ),
+          ),
+        );
       });
     });
   });
 }
-

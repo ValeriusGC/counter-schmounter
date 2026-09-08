@@ -1,0 +1,31 @@
+---
+description: DRY — перед новым shared-кодом обязательно проверить docs/registries/ и codebase.
+alwaysApply: true
+---
+
+# DRY и реестры
+
+Перед созданием **нового** shared-артефакта — обязательный порядок:
+
+1. Прочитать `docs/registries/README.md` и нужный реестр
+2. Grep / semantic search по `lib/`
+3. Решение: **переиспользовать** → **расширить** → **создать новый**
+4. При создании нового — **добавить строку в реестр**
+
+## Реестры
+
+| Файл | Что искать перед созданием |
+|------|---------------------------|
+| `widgets.md` | Shared-виджеты |
+| `dialogs_and_modals.md` | Диалоги, bottom sheets, alerts |
+| `formatters.md` | Форматирование дат, строк, масок |
+| `extensions.md` | Extension methods |
+| `utilities.md` | Чистые функции, helpers |
+| `providers_and_services.md` | Провайдеры, сервисы |
+
+Workflow: skill `/registry-before-create`.
+
+## Запрещено
+
+- Дублировать виджет/утилиту/расширение, если аналог есть в реестре или `lib/`
+- Маскировать бизнес-логику методами на уровне dumb-виджета

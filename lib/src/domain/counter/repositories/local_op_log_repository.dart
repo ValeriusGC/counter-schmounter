@@ -24,7 +24,12 @@ abstract class LocalOpLogRepository {
   ///
   /// Операция будет сохранена локально. Если операция с таким же `op_id`
   /// уже существует, она не будет добавлена повторно (дедупликация).
+  ///
+  /// Идемпотентность по `op_id` — контракт [EntityAdapter.apply] ulsync.
   Future<void> append(CounterOperation operation);
+
+  /// Возвращает операцию с [opId] или `null`, если её нет в журнале.
+  Future<CounterOperation?> byId(String opId);
 
   /// Возвращает все операции из op-log.
   ///

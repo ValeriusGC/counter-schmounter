@@ -139,9 +139,13 @@ class CounterViewModel extends _$CounterViewModel {
   /// чтобы он пересчитал значение счетчика из обновленного op-log.
   Future<void> incrementCounter() async {
     final incrementCounterUseCase = ref.read(incrementCounterUseCaseProvider);
-    await incrementCounterUseCase.execute();
-    // Инвалидируем counterStateProvider, чтобы он пересчитал значение из обновленного op-log
-    ref.invalidate(counterStateProvider);
+    try {
+      await incrementCounterUseCase.execute();
+    } finally {
+      if (ref.mounted) {
+        ref.invalidate(counterStateProvider);
+      }
+    }
 
     await ref
         .read(needSyncControllerProvider.notifier)

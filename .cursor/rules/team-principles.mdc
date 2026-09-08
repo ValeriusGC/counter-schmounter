@@ -1,0 +1,41 @@
+---
+description: DDD, UI Projection, SOLID/YAGNI/KISS/DRY, ориентир Avito/Surf — краткий норматив команды.
+alwaysApply: true
+---
+
+# Принципы команды
+
+Полная архитектурная документация: см. путь в `AGENTS.md` → раздел «Архитектура».
+
+## DDD
+
+- Доменная логика — в domain/application, не в виджетах и не в DTO.
+- UI и инфраструктура зависят от домена, не наоборот.
+
+## UI Projection
+
+Цепочка: `Domain → Controller → Factory → Projection → UiModelBuilder → UiModel → Dumb Widget`
+
+- **Widget** — только отрисовка UiModel и callbacks. Ноль бизнес-логики.
+- **Factory** — решения: видимость, порядок, intent.
+- **Builder** — форматирование, локализация, сборка UiModel.
+- **Controller** — side effects: навигация, метрика, handlers.
+- `if/switch` по бизнес-данным в Widget — запрещён.
+
+Детальный workflow: skill `/architecture-ui-workflow`.
+
+## SOLID, YAGNI, KISS, DRY
+
+- Минимальный diff по задаче.
+- Не абстрагировать «на будущее».
+- Перед новым кодом — реестры и codebase (rule `dry-and-registries`).
+
+## Ориентир Avito / Surf
+
+- Предсказуемые слои, явные контракты, тестируемость.
+- Без «магии» и скрытой логики в UI.
+- Публичные API модулей — узкие и стабильные; DartDoc на русском (rule `dart-dartdoc-comments`).
+
+## Конфликт с generic Flutter skills
+
+`flutter-apply-architecture-best-practices` — только после сверки с UI Projection и DDD этого проекта.

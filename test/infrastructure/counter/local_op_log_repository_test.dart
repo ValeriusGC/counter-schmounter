@@ -116,7 +116,6 @@ void main() {
         final operations = await repository.getAll();
         expect(operations.length, 1);
         expect(operations.first.opId, operation.opId);
-
       });
 
       test('appends operation to repository', () async {
@@ -187,15 +186,16 @@ void main() {
     });
 
     group('getAll', () {
+      test(
+        'auto-initializes repository and returns empty list when not initialized',
+        () async {
+          // Act
+          final operations = await repository.getAll();
 
-      test('auto-initializes repository and returns empty list when not initialized', () async {
-        // Act
-        final operations = await repository.getAll();
-
-        // Assert
-        expect(operations, isEmpty);
-      });
-
+          // Assert
+          expect(operations, isEmpty);
+        },
+      );
 
       test('returns empty list when no operations', () async {
         // Arrange
@@ -352,6 +352,27 @@ void main() {
         // Assert
         final operations = await repository.getAll();
         expect(operations, isEmpty);
+      });
+    });
+
+    group('byId', () {
+      test('returns operation when opId exists', () async {
+        await repository.initialize();
+        final operation = IncrementOperation(
+          opId: const Uuid().v4(),
+          clientId: 'test-client',
+          createdAt: DateTime.now().toUtc(),
+        );
+        await repository.append(operation);
+
+        final found = await repository.byId(operation.opId);
+        expect(found, operation);
+      });
+
+      test('returns null for unknown opId', () async {
+        await repository.initialize();
+        final found = await repository.byId('missing-op-id');
+        expect(found, isNull);
       });
     });
 
