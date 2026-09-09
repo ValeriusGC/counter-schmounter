@@ -20,7 +20,19 @@ final class FakeSyncTransport implements SyncTransport {
   /// Скрипт ответа pull; по умолчанию пустая страница на [since].
   Future<PullPage> Function({required int since, int? limit})? onPull;
 
-  /// Поток live (контракт [SyncTransport.live]); в шаге 15 не используется.
+  /// Журнал вызовов `push` / `pull` / `live` в порядке поступления.
+  final List<String> callLog = <String>[];
+
+  /// Сколько раз вызвали [live].
+  int liveCalls = 0;
+
+  /// Последний [appliedSince] из [live]; для проверки курсора в тестах.
+  int Function()? appliedSince;
+
+  /// Последний [onConnectionState] из [live]; для эмуляции lost/restored.
+  void Function(LiveConnectionState state)? onConnectionState;
+
+  /// Поток live (контракт [SyncTransport.live]); используется в шаге 16.
   final StreamController<LiveMessage> liveController =
       StreamController<LiveMessage>.broadcast();
 
@@ -30,6 +42,7 @@ final class FakeSyncTransport implements SyncTransport {
   @override
   Future<List<PushResult>> push(List<Envelope> envelopes) async {
     _ensureOpen();
+    callLog.add('push');
     pushCalls.add(List<Envelope>.from(envelopes));
     final handler = onPush;
     if (handler != null) {
@@ -44,6 +57,7 @@ final class FakeSyncTransport implements SyncTransport {
   @override
   Future<PullPage> pull({required int since, int? limit}) async {
     _ensureOpen();
+    callLog.add('pull');
     pullCalls.add((since: since, limit: limit));
     final handler = onPull;
     if (handler != null) {
@@ -58,6 +72,10 @@ final class FakeSyncTransport implements SyncTransport {
     void Function(LiveConnectionState state)? onConnectionState,
   }) {
     _ensureOpen();
+    callLog.add('live');
+    liveCalls++;
+    this.appliedSince = appliedSince;
+    this.onConnectionState = onConnectionState;
     return liveController.stream;
   }
 

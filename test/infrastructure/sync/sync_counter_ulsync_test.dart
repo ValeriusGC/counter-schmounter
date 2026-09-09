@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sembast/sembast_memory.dart';
@@ -12,6 +11,7 @@ import 'package:counter_schmounter/src/domain/counter/utils/counter_aggregator.d
 import 'package:counter_schmounter/src/infrastructure/counter/codecs/counter_operation_codec.dart';
 import 'package:counter_schmounter/src/infrastructure/counter/repositories/local_op_log_repository_impl.dart';
 import 'package:counter_schmounter/src/infrastructure/sync/ulsync_client_factory.dart';
+import '../../test_helpers/counter_envelope.dart';
 import '../../test_helpers/fake_sync_transport.dart';
 
 void main() {
@@ -82,7 +82,7 @@ void main() {
         createdAt: DateTime.utc(2026, 3, 2, 11),
       );
 
-      final envelope = _counterEnvelope(operation: opB, serverSeq: 1);
+      final envelope = counterEnvelope(operation: opB, serverSeq: 1);
 
       final client1 = await openClient(
         userScope: 'user-1',
@@ -116,27 +116,4 @@ void main() {
       await client2.close();
     });
   });
-}
-
-Envelope _counterEnvelope({
-  required IncrementOperation operation,
-  required int serverSeq,
-}) {
-  final createdMs = operation.createdAt.toUtc().millisecondsSinceEpoch;
-  return Envelope(
-    id: operation.opId,
-    part: 'full',
-    entityType: 'counter_operation',
-    createdAtMs: createdMs,
-    lastEditedAtMs: createdMs,
-    revision: 1,
-    sourceId: operation.clientId,
-    flags: 0,
-    schemaVersion: 1,
-    payloadEncoding: 'json',
-    payload: Uint8List.fromList(
-      utf8.encode(jsonEncode(CounterOperationCodec.toJson(operation))),
-    ),
-    serverSeq: serverSeq,
-  );
 }

@@ -5,8 +5,8 @@ import 'package:go_router/go_router.dart';
 import 'package:counter_schmounter/src/infrastructure/auth/providers/auth_state_listenable_provider.dart';
 import 'package:counter_schmounter/src/infrastructure/bootstrap/infrastructure_init_provider.dart';
 import 'package:counter_schmounter/src/infrastructure/counter/providers/counter_state_provider.dart';
-import 'package:counter_schmounter/src/infrastructure/realtime/services/counter_realtime_events_service.dart';
 import 'package:counter_schmounter/src/infrastructure/sync/controllers/counter_initial_sync_controller.dart';
+import 'package:counter_schmounter/src/infrastructure/sync/controllers/ulsync_live_controller.dart';
 import 'package:counter_schmounter/src/presentation/counter/viewmodels/counter_viewmodel.dart';
 
 /// Экран счетчика — главный публичный экран приложения.
@@ -14,7 +14,7 @@ import 'package:counter_schmounter/src/presentation/counter/viewmodels/counter_v
 /// Архитектурные принципы:
 /// - counterStateProvider отображается ВСЕГДА (read-model).
 /// - CounterViewModel НЕ гейтит отображение счетчика.
-/// - Initial sync и realtime запускаются ТОЛЬКО после infrastructure init.
+/// - Initial sync и живая лента запускаются ТОЛЬКО после infrastructure init.
 /// - Экран корректно работает одинаково на Web и Mobile.
 class CounterScreen extends ConsumerWidget {
   const CounterScreen({super.key});
@@ -39,7 +39,7 @@ class CounterScreen extends ConsumerWidget {
 
     /// 3. Разрешаем сайд-эффекты ТОЛЬКО после init
     ref.watch(counterInitialSyncControllerProvider);
-    ref.watch(counterRealtimeEventsServiceProvider);
+    final liveStatus = ref.watch(ulsyncLiveControllerProvider);
 
     /// 4. ViewModel используется ТОЛЬКО для действий (sign out / increment)
     final stateAsync = ref.watch(counterViewModelProvider);
@@ -53,6 +53,17 @@ class CounterScreen extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('Counter'),
         actions: [
+          if (isAuthenticated)
+            Tooltip(
+              message: liveStatus == UlsyncLiveStatus.connected
+                  ? 'На связи'
+                  : 'Нет связи',
+              child: Icon(
+                liveStatus == UlsyncLiveStatus.connected
+                    ? Icons.cloud_done_outlined
+                    : Icons.cloud_off_outlined,
+              ),
+            ),
           if (!isAuthenticated)
             TextButton(
               onPressed: () => context.push('/login'),
