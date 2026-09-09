@@ -17,9 +17,15 @@ class CounterSyncCoordinator extends _$CounterSyncCoordinator {
   /// Выполняет [action] не чаще одного раза одновременно.
   ///
   /// Параллельные вызовы ждут текущий обмен и не дублируют его.
+  /// Ошибку обрабатывает только инициатор; ожидающие вызовы не пробрасывают
+  /// чужой сбой — иначе [UlsyncLiveController] падает вместе с initial sync.
   Future<void> runOnce(Future<void> Function() action) async {
     if (_inFlight != null) {
-      await _inFlight!;
+      try {
+        await _inFlight!;
+      } on Object {
+        // Инициатор уже залогировал или залогирует сбой.
+      }
       return;
     }
 

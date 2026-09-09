@@ -14,13 +14,13 @@ part 'need_sync_controller.g.dart';
 /// Контроллер "нужно синхронизироваться".
 ///
 /// Назначение:
-/// - принимать сигналы (realtime / другие источники),
+/// - принимать сигналы (локальный инкремент и другие вызовы [markCounterNeedSync]),
 /// - схлопывать их через debounce,
 /// - запускать sync,
 /// - уведомлять read-model (UI) через invalidate.
 ///
 /// КРИТИЧНО:
-/// - помечен keepAlive, так как вызывается из realtime callback через `ref.read`.
+/// - помечен keepAlive, так как debounce не должен умирать между кадрами UI.
 /// - без keepAlive debounce умирал бы из-за autoDispose.
 ///
 /// ВАЖНО (account-scope):
@@ -160,9 +160,11 @@ class NeedSyncController extends _$NeedSyncController {
 
         final useCase = await ref.read(syncCounterUseCaseProvider.future);
 
-        await ref.read(counterSyncCoordinatorProvider.notifier).runOnce(() async {
-          await useCase.execute();
-        });
+        await ref.read(counterSyncCoordinatorProvider.notifier).runOnce(
+          () async {
+            await useCase.execute();
+          },
+        );
 
         ref.invalidate(counterStateProvider);
 

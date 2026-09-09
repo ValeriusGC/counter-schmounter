@@ -13,9 +13,6 @@ abstract final class AppLogComponent {
   /// Общие логи синхронизации.
   static const String state = 'STATE';
 
-  /// Логи realtime (следующий этап).
-  static const String realtime = 'REALTIME';
-
   /// Логи экспорта (следующий этап).
   static const String export = 'EXPORT';
 

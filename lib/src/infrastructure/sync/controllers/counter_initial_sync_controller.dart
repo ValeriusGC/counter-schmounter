@@ -8,7 +8,6 @@ import 'package:counter_schmounter/src/domain/counter/constants/counter_entity_i
 import 'package:counter_schmounter/src/infrastructure/auth/providers/supabase_user_id_provider.dart';
 import 'package:counter_schmounter/src/infrastructure/counter/providers/counter_state_provider.dart';
 import 'package:counter_schmounter/src/infrastructure/counter/providers/local_op_log_repository_provider.dart';
-import 'package:counter_schmounter/src/infrastructure/realtime/controllers/realtime_gate_controller.dart';
 import 'package:counter_schmounter/src/infrastructure/shared/logging/app_logger.dart';
 import 'package:counter_schmounter/src/infrastructure/sync/controllers/counter_sync_coordinator.dart';
 import 'package:counter_schmounter/src/infrastructure/sync/sync_failure_logging.dart';
@@ -20,8 +19,7 @@ part 'counter_initial_sync_controller.g.dart';
 /// Назначение:
 /// - запускает стартовую синхронизацию на КАЖДЫЙ новый аккаунт (user_id);
 /// - один обмен ulsync ([SyncCounterUseCase.execute] → `syncOnce`);
-/// - invalidate read-model;
-/// - enable realtime gate (шаг 16 снимет Realtime, gate пока оставляем).
+/// - invalidate read-model; ленту открывает [UlsyncLiveController].
 ///
 /// Триггер:
 /// - `ref.listen(..., fireImmediately: true)` на [supabaseUserIdProvider]
@@ -156,20 +154,6 @@ class CounterInitialSyncController extends _$CounterInitialSyncController {
       }
 
       ref.invalidate(counterStateProvider);
-
-      ref
-          .read(realtimeGateControllerProvider.notifier)
-          .enable(reason: 'initial_sync_ulsync_finished');
-
-      AppLogger.info(
-        component: AppLogComponent.realtime,
-        message: 'Realtime gate opened after initial ulsync sync.',
-        context: <String, Object?>{
-          'user_id': nextUserId,
-          'entity_id': CounterEntityIds.defaultCounter,
-          'pipeline_seq': pipelineSeq,
-        },
-      );
 
       return true;
     }
