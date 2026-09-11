@@ -1,24 +1,26 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
-import 'package:counter_schmounter/src/application/counter/providers/export_local_operations_use_case_provider.dart';
 import 'package:counter_schmounter/src/application/counter/providers/sync_counter_use_case_provider.dart';
 import 'package:counter_schmounter/src/domain/counter/constants/counter_entity_ids.dart';
 import 'package:counter_schmounter/src/infrastructure/auth/providers/supabase_user_id_provider.dart';
 import 'package:counter_schmounter/src/infrastructure/counter/providers/counter_state_provider.dart';
 import 'package:counter_schmounter/src/infrastructure/shared/logging/app_logger.dart';
 import 'package:counter_schmounter/src/infrastructure/shared/utils/debouncer.dart';
+import 'package:counter_schmounter/src/infrastructure/sync/controllers/counter_sync_coordinator.dart';
+import 'package:counter_schmounter/src/infrastructure/sync/providers/ulsync_client_provider.dart';
+import 'package:counter_schmounter/src/infrastructure/sync/sync_failure_logging.dart';
 
 part 'need_sync_controller.g.dart';
 
 /// Контроллер "нужно синхронизироваться".
 ///
 /// Назначение:
-/// - принимать сигналы (realtime / другие источники),
+/// - принимать сигналы (локальный инкремент и другие вызовы [markCounterNeedSync]),
 /// - схлопывать их через debounce,
 /// - запускать sync,
 /// - уведомлять read-model (UI) через invalidate.
 ///
 /// КРИТИЧНО:
-/// - помечен keepAlive, так как вызывается из realtime callback через `ref.read`.
+/// - помечен keepAlive, так как debounce не должен умирать между кадрами UI.
 /// - без keepAlive debounce умирал бы из-за autoDispose.
 ///
 /// ВАЖНО (account-scope):
@@ -69,10 +71,6 @@ class NeedSyncController extends _$NeedSyncController {
       if (state) {
         state = false;
       }
-
-      // Read-model: [counterStateProvider] смотрит [localOpLogRepositoryProvider], тот
-      // — [supabaseUserIdProvider]. Смена user_id пересобирает localOpLog и сама
-      // инвалидирует counterState. Явный invalidate отсюда ломал граф (реентрантность).
 
       AppLogger.info(
         component: AppLogComponent.sync,
@@ -147,19 +145,27 @@ class NeedSyncController extends _$NeedSyncController {
       );
 
       try {
-        final exportUseCase = await ref.read(
-          exportLocalOperationsUseCaseProvider.future,
-        );
-
-        await exportUseCase.execute(entityId: CounterEntityIds.defaultCounter);
+        final client = await ref.read(ulsyncClientProvider.future);
+        if (client == null) {
+          AppLogger.info(
+            component: AppLogComponent.sync,
+            message: 'NeedSync skipped: no ulsync client.',
+            context: <String, Object?>{
+              'entity_id': CounterEntityIds.defaultCounter,
+              'reason': reason,
+            },
+          );
+          return;
+        }
 
         final useCase = await ref.read(syncCounterUseCaseProvider.future);
 
-        await useCase.execute(entityId: CounterEntityIds.defaultCounter);
+        await ref.read(counterSyncCoordinatorProvider.notifier).runOnce(
+          () async {
+            await useCase.execute();
+          },
+        );
 
-        /// 🔑 КРИТИЧНО ДЛЯ WEB:
-        /// Явно инвалидируем read-model и сразу читаем его,
-        /// чтобы гарантировать пересчёт.
         ref.invalidate(counterStateProvider);
 
         final debugCounter = ref.read(counterStateProvider);
@@ -184,8 +190,7 @@ class NeedSyncController extends _$NeedSyncController {
           },
         );
       } catch (e, st) {
-        AppLogger.error(
-          component: AppLogComponent.sync,
+        logSyncFailure(
           message: 'Sync failed from NeedSyncController.',
           error: e,
           stackTrace: st,

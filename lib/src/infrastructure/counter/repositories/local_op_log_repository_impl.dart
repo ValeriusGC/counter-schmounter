@@ -3,8 +3,8 @@ import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:counter_schmounter/src/domain/counter/operations/counter_operation.dart';
-import 'package:counter_schmounter/src/domain/counter/operations/increment_operation.dart';
 import 'package:counter_schmounter/src/domain/counter/repositories/local_op_log_repository.dart';
+import 'package:counter_schmounter/src/infrastructure/counter/codecs/counter_operation_codec.dart';
 import 'package:counter_schmounter/src/infrastructure/shared/logging/app_logger.dart';
 import 'package:counter_schmounter/src/infrastructure/shared/storage/storage_migration.dart';
 import 'package:counter_schmounter/src/infrastructure/shared/storage/storage_schema_version.dart';
@@ -166,7 +166,10 @@ class LocalOpLogRepositoryImpl implements LocalOpLogRepository {
     try {
       final List<dynamic> jsonList = jsonDecode(jsonString) as List<dynamic>;
       return jsonList
-          .map((json) => _deserializeOperation(json as Map<String, dynamic>))
+          .map(
+            (json) =>
+                CounterOperationCodec.fromJson(json as Map<String, dynamic>),
+          )
           .toList();
     } catch (e, stackTrace) {
       AppLogger.error(
@@ -179,6 +182,17 @@ class LocalOpLogRepositoryImpl implements LocalOpLogRepository {
       // В случае ошибки возвращаем пустой список
       return [];
     }
+  }
+
+  @override
+  Future<CounterOperation?> byId(String opId) async {
+    final operations = await getAll();
+    for (final CounterOperation operation in operations) {
+      if (operation.opId == opId) {
+        return operation;
+      }
+    }
+    return null;
   }
 
   @override
@@ -210,41 +224,11 @@ class LocalOpLogRepositoryImpl implements LocalOpLogRepository {
 
   /// Сохраняет операции в SharedPreferences.
   Future<void> _saveOperations(List<CounterOperation> operations) async {
-    final jsonList = operations.map((op) => _serializeOperation(op)).toList();
+    final jsonList = operations
+        .map((op) => CounterOperationCodec.toJson(op))
+        .toList();
     final jsonString = jsonEncode(jsonList);
     await _prefs.setString(_storageKey(), jsonString);
-  }
-
-  /// Сериализует операцию в JSON.
-  Map<String, dynamic> _serializeOperation(CounterOperation operation) {
-    if (operation is IncrementOperation) {
-      return {
-        'op_id': operation.opId,
-        'type': 'increment',
-        'client_id': operation.clientId,
-        'created_at': operation.createdAt.toIso8601String(),
-      };
-    }
-    throw ArgumentError('Unknown operation type: ${operation.runtimeType}');
-  }
-
-  /// Десериализует операцию из JSON.
-  CounterOperation _deserializeOperation(Map<String, dynamic> json) {
-    final type = json['type'] as String;
-    final opId = json['op_id'] as String;
-    final clientId = json['client_id'] as String;
-    final createdAt = DateTime.parse(json['created_at'] as String);
-
-    switch (type) {
-      case 'increment':
-        return IncrementOperation(
-          opId: opId,
-          clientId: clientId,
-          createdAt: createdAt,
-        );
-      default:
-        throw ArgumentError('Unknown operation type: $type');
-    }
   }
 
   /// Применяет компактизацию op-log, если превышен лимит операций.

@@ -15,9 +15,7 @@ void main() {
   setUp(() {
     final mockSignInUseCase = MockSignInUseCase();
     container = ProviderContainer(
-      overrides: [
-        createSignInUseCaseOverride(mockSignInUseCase),
-      ],
+      overrides: [createSignInUseCaseOverride(mockSignInUseCase)],
     );
   });
 
@@ -218,9 +216,7 @@ void main() {
       });
     });
 
-    group('signIn', () {
-
-    });
+    group('signIn', () {});
 
     group('resetNavigation', () {
       test('can be called multiple times', () {
@@ -239,4 +235,3 @@ void main() {
     });
   });
 }
-

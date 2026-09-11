@@ -35,6 +35,9 @@ final class _FakeLocalOpLogRepository implements LocalOpLogRepository {
   Future<List<CounterOperation>> getAll() async => <CounterOperation>[];
 
   @override
+  Future<CounterOperation?> byId(String opId) async => null;
+
+  @override
   Future<void> clear() async {}
 }
 

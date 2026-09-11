@@ -27,10 +27,7 @@ void main() {
         // Arrange
         final mockUser = MockUser();
         when(() => mockUser.id).thenReturn('test-user-id');
-        final response = AuthResponse(
-          user: mockUser,
-          session: null,
-        );
+        final response = AuthResponse(user: mockUser, session: null);
 
         when(
           () => mockAuth.signUp(
@@ -54,36 +51,36 @@ void main() {
         ).called(1);
       });
 
-      test('successfully handles signUp when user is null (email confirmation required)', () async {
-        // Arrange
-        final response = AuthResponse(
-          user: null,
-          session: null,
-        );
+      test(
+        'successfully handles signUp when user is null (email confirmation required)',
+        () async {
+          // Arrange
+          final response = AuthResponse(user: null, session: null);
 
-        when(
-          () => mockAuth.signUp(
-            email: any(named: 'email'),
-            password: any(named: 'password'),
-          ),
-        ).thenAnswer((_) async => response);
+          when(
+            () => mockAuth.signUp(
+              email: any(named: 'email'),
+              password: any(named: 'password'),
+            ),
+          ).thenAnswer((_) async => response);
 
-        // Act & Assert - should not throw
-        await expectLater(
-          repository.signUp(
-            email: 'test@example.com',
-            password: 'password123',
-          ),
-          completes,
-        );
+          // Act & Assert - should not throw
+          await expectLater(
+            repository.signUp(
+              email: 'test@example.com',
+              password: 'password123',
+            ),
+            completes,
+          );
 
-        verify(
-          () => mockAuth.signUp(
-            email: 'test@example.com',
-            password: 'password123',
-          ),
-        ).called(1);
-      });
+          verify(
+            () => mockAuth.signUp(
+              email: 'test@example.com',
+              password: 'password123',
+            ),
+          ).called(1);
+        },
+      );
 
       test('throws exception when signUp fails', () async {
         // Arrange
@@ -97,10 +94,7 @@ void main() {
 
         // Act & Assert
         await expectLater(
-          repository.signUp(
-            email: 'test@example.com',
-            password: 'password123',
-          ),
+          repository.signUp(email: 'test@example.com', password: 'password123'),
           throwsA(isA<AuthException>()),
         );
 
@@ -116,10 +110,7 @@ void main() {
         // Arrange
         final mockUser = MockUser();
         when(() => mockUser.id).thenReturn('test-user-id');
-        final response = AuthResponse(
-          user: mockUser,
-          session: null,
-        );
+        final response = AuthResponse(user: mockUser, session: null);
 
         when(
           () => mockAuth.signUp(
@@ -129,17 +120,11 @@ void main() {
         ).thenAnswer((_) async => response);
 
         // Act
-        await repository.signUp(
-          email: '',
-          password: 'password123',
-        );
+        await repository.signUp(email: '', password: 'password123');
 
         // Assert
         verify(
-          () => mockAuth.signUp(
-            email: '',
-            password: 'password123',
-          ),
+          () => mockAuth.signUp(email: '', password: 'password123'),
         ).called(1);
       });
 
@@ -155,10 +140,7 @@ void main() {
 
         // Act & Assert
         await expectLater(
-          repository.signUp(
-            email: 'test@example.com',
-            password: '',
-          ),
+          repository.signUp(email: 'test@example.com', password: ''),
           throwsA(isA<AuthException>()),
         );
       });
@@ -168,10 +150,7 @@ void main() {
         final longEmail = 'a' * 1000 + '@example.com';
         final mockUser = MockUser();
         when(() => mockUser.id).thenReturn('test-user-id');
-        final response = AuthResponse(
-          user: mockUser,
-          session: null,
-        );
+        final response = AuthResponse(user: mockUser, session: null);
 
         when(
           () => mockAuth.signUp(
@@ -181,17 +160,11 @@ void main() {
         ).thenAnswer((_) async => response);
 
         // Act
-        await repository.signUp(
-          email: longEmail,
-          password: 'password123',
-        );
+        await repository.signUp(email: longEmail, password: 'password123');
 
         // Assert
         verify(
-          () => mockAuth.signUp(
-            email: longEmail,
-            password: 'password123',
-          ),
+          () => mockAuth.signUp(email: longEmail, password: 'password123'),
         ).called(1);
       });
 
@@ -200,10 +173,7 @@ void main() {
         final longPassword = 'a' * 1000;
         final mockUser = MockUser();
         when(() => mockUser.id).thenReturn('test-user-id');
-        final response = AuthResponse(
-          user: mockUser,
-          session: null,
-        );
+        final response = AuthResponse(user: mockUser, session: null);
 
         when(
           () => mockAuth.signUp(
@@ -232,10 +202,7 @@ void main() {
         final specialEmail = 'test+user@example.co.uk';
         final mockUser = MockUser();
         when(() => mockUser.id).thenReturn('test-user-id');
-        final response = AuthResponse(
-          user: mockUser,
-          session: null,
-        );
+        final response = AuthResponse(user: mockUser, session: null);
 
         when(
           () => mockAuth.signUp(
@@ -245,17 +212,11 @@ void main() {
         ).thenAnswer((_) async => response);
 
         // Act
-        await repository.signUp(
-          email: specialEmail,
-          password: 'password123',
-        );
+        await repository.signUp(email: specialEmail, password: 'password123');
 
         // Assert
         verify(
-          () => mockAuth.signUp(
-            email: specialEmail,
-            password: 'password123',
-          ),
+          () => mockAuth.signUp(email: specialEmail, password: 'password123'),
         ).called(1);
       });
     });
@@ -285,32 +246,35 @@ void main() {
         ).called(1);
       });
 
-      test('throws exception when signIn fails with invalid credentials', () async {
-        // Arrange
-        final exception = AuthException('Invalid login credentials');
-        when(
-          () => mockAuth.signInWithPassword(
-            email: any(named: 'email'),
-            password: any(named: 'password'),
-          ),
-        ).thenThrow(exception);
+      test(
+        'throws exception when signIn fails with invalid credentials',
+        () async {
+          // Arrange
+          final exception = AuthException('Invalid login credentials');
+          when(
+            () => mockAuth.signInWithPassword(
+              email: any(named: 'email'),
+              password: any(named: 'password'),
+            ),
+          ).thenThrow(exception);
 
-        // Act & Assert
-        await expectLater(
-          repository.signIn(
-            email: 'test@example.com',
-            password: 'wrongpassword',
-          ),
-          throwsA(isA<AuthException>()),
-        );
+          // Act & Assert
+          await expectLater(
+            repository.signIn(
+              email: 'test@example.com',
+              password: 'wrongpassword',
+            ),
+            throwsA(isA<AuthException>()),
+          );
 
-        verify(
-          () => mockAuth.signInWithPassword(
-            email: 'test@example.com',
-            password: 'wrongpassword',
-          ),
-        ).called(1);
-      });
+          verify(
+            () => mockAuth.signInWithPassword(
+              email: 'test@example.com',
+              password: 'wrongpassword',
+            ),
+          ).called(1);
+        },
+      );
 
       test('throws exception when signIn fails with network error', () async {
         // Arrange
@@ -324,10 +288,7 @@ void main() {
 
         // Act & Assert
         await expectLater(
-          repository.signIn(
-            email: 'test@example.com',
-            password: 'password123',
-          ),
+          repository.signIn(email: 'test@example.com', password: 'password123'),
           throwsA(isA<Exception>()),
         );
       });
@@ -344,10 +305,7 @@ void main() {
 
         // Act & Assert
         await expectLater(
-          repository.signIn(
-            email: '',
-            password: 'password123',
-          ),
+          repository.signIn(email: '', password: 'password123'),
           throwsA(isA<AuthException>()),
         );
       });
@@ -364,10 +322,7 @@ void main() {
 
         // Act & Assert
         await expectLater(
-          repository.signIn(
-            email: 'test@example.com',
-            password: '',
-          ),
+          repository.signIn(email: 'test@example.com', password: ''),
           throwsA(isA<AuthException>()),
         );
       });
@@ -424,7 +379,9 @@ void main() {
     group('signOut', () {
       test('successfully signs out user', () async {
         // Arrange
-        when(() => mockAuth.signOut()).thenAnswer((_) async => AuthResponse(user: null, session: null));
+        when(
+          () => mockAuth.signOut(),
+        ).thenAnswer((_) async => AuthResponse(user: null, session: null));
 
         // Act
         await repository.signOut();
@@ -439,10 +396,7 @@ void main() {
         when(() => mockAuth.signOut()).thenThrow(exception);
 
         // Act & Assert
-        await expectLater(
-          repository.signOut(),
-          throwsA(isA<AuthException>()),
-        );
+        await expectLater(repository.signOut(), throwsA(isA<AuthException>()));
 
         verify(() => mockAuth.signOut()).called(1);
       });
@@ -453,15 +407,14 @@ void main() {
         when(() => mockAuth.signOut()).thenThrow(exception);
 
         // Act & Assert
-        await expectLater(
-          repository.signOut(),
-          throwsA(isA<Exception>()),
-        );
+        await expectLater(repository.signOut(), throwsA(isA<Exception>()));
       });
 
       test('can be called multiple times sequentially', () async {
         // Arrange
-        when(() => mockAuth.signOut()).thenAnswer((_) async => AuthResponse(user: null, session: null));
+        when(
+          () => mockAuth.signOut(),
+        ).thenAnswer((_) async => AuthResponse(user: null, session: null));
 
         // Act
         await repository.signOut();
@@ -474,4 +427,3 @@ void main() {
     });
   });
 }
-

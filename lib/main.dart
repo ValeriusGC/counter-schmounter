@@ -56,7 +56,7 @@ Future<void> main() async {
   );
   await Supabase.initialize(
     url: supabaseUrl,
-    anonKey: supabaseAnonKey,
+    publishableKey: supabaseAnonKey,
     authOptions: const FlutterAuthClientOptions(
       // Автоматически обновлять токены при истечении
       autoRefreshToken: true,

@@ -23,19 +23,22 @@ void main() {
         expect(result, isNull);
       });
 
-      test('setLastSyncedAt stores value and getLastSyncedAt returns it', () async {
-        // Arrange — нормализуем ДО записи
-        final now = DateTime.fromMillisecondsSinceEpoch(
-          DateTime.now().millisecondsSinceEpoch,
-        );
+      test(
+        'setLastSyncedAt stores value and getLastSyncedAt returns it',
+        () async {
+          // Arrange — нормализуем ДО записи
+          final now = DateTime.fromMillisecondsSinceEpoch(
+            DateTime.now().millisecondsSinceEpoch,
+          );
 
-        // Act
-        await repository.setLastSyncedAt(now);
-        final result = await repository.getLastSyncedAt();
+          // Act
+          await repository.setLastSyncedAt(now);
+          final result = await repository.getLastSyncedAt();
 
-        // Assert
-        expect(result, equals(now));
-      });
+          // Assert
+          expect(result, equals(now));
+        },
+      );
     });
 
     group('last_exported_at', () {
@@ -44,19 +47,22 @@ void main() {
         expect(result, isNull);
       });
 
-      test('setLastExportedAt stores value and getLastExportedAt returns it', () async {
-        // Arrange — нормализуем ДО записи
-        final now = DateTime.fromMillisecondsSinceEpoch(
-          DateTime.now().millisecondsSinceEpoch,
-        ).toUtc();
+      test(
+        'setLastExportedAt stores value and getLastExportedAt returns it',
+        () async {
+          // Arrange — нормализуем ДО записи
+          final now = DateTime.fromMillisecondsSinceEpoch(
+            DateTime.now().millisecondsSinceEpoch,
+          ).toUtc();
 
-        // Act
-        await repository.setLastExportedAt(now);
-        final result = repository.getLastExportedAt();
+          // Act
+          await repository.setLastExportedAt(now);
+          final result = repository.getLastExportedAt();
 
-        // Assert
-        expect(result, equals(now));
-      });
+          // Assert
+          expect(result, equals(now));
+        },
+      );
     });
   });
 }

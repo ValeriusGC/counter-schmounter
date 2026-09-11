@@ -14,7 +14,7 @@ part 'counter_state_provider.g.dart';
 /// - возвращает текущее значение счетчика.
 ///
 /// Обновляется исключительно через:
-/// - invalidate (sync / realtime),
+/// - invalidate (sync / живая лента),
 /// - первый watch (startup).
 ///
 /// КРИТИЧНО:

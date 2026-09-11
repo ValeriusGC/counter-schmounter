@@ -1,0 +1,23 @@
+---
+description: Git commit/push — только по явной команде пользователя; agent не предлагает
+alwaysApply: true
+---
+
+# Git: суверенитет пользователя
+
+Hook: `.cursor/hooks/gate-git.sh` (механический gate). Это rule — поведение agent в чате.
+
+## Запрещено
+
+- `git commit`, `git push`, `gh pr create` без **явной** команды пользователя в текущем сообщении («Сделай коммит», «Сделай пуш», «создай PR» и т.п.).
+- **Предлагать** commit, push, PR («закоммитить?», «запушить?», «открыть PR?»).
+- Plan, todos, SETUP_PROMPT **не отменяют** это правило.
+
+## Разрешено
+
+- Read-only git: `status`, `diff`, `log`, `branch`, `show`.
+- Write git — только после явной команды; hook запросит **Approve** в UI Cursor.
+
+## Stop condition
+
+Изменения готовы → «Готово к commit. Жду твоей команды.» — без инициативы по git.

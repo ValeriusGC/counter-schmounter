@@ -35,7 +35,8 @@ class MockUser extends Mock implements User {}
 class MockClientIdentityService extends Mock implements ClientIdentityService {}
 
 /// Mock for IncrementCounterUseCase
-class MockIncrementCounterUseCase extends Mock implements IncrementCounterUseCase {}
+class MockIncrementCounterUseCase extends Mock
+    implements IncrementCounterUseCase {}
 
 /// Mock for LocalOpLogRepository
 class MockLocalOpLogRepository extends Mock implements LocalOpLogRepository {}
@@ -54,4 +55,3 @@ void registerFallbackValues() {
     ),
   );
 }
-

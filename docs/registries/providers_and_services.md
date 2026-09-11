@@ -1,0 +1,31 @@
+# Реестр: провайдеры и сервисы
+
+**Дата создания:** 2026-09-08 15:08:08 +0300  
+**Последнее обновление:** 2026-09-09 11:45:00 +0300  
+**Версия:** 3
+
+Перед новым переиспользуемым провайдером или сервисом — проверить таблицу и grep по `lib/`.
+
+| Имя | Путь | Назначение | Когда использовать |
+|-----|------|------------|-------------------|
+| `supabaseClientProvider` | `lib/src/infrastructure/auth/providers/supabase_client_provider.dart` | Клиент Supabase после инициализации | Инфраструктура auth, не из presentation напрямую |
+| `authRepositoryProvider` | `lib/src/infrastructure/auth/providers/auth_repository_provider.dart` | Реализация `AuthRepository` | Use cases входа/регистрации |
+| `signInUseCaseProvider` и др. | `lib/src/infrastructure/auth/providers/auth_use_case_providers.dart` | Use cases auth | ViewModels экранов входа |
+| `supabaseUserIdProvider` | `lib/src/infrastructure/auth/providers/supabase_user_id_provider.dart` | Stream id текущего пользователя | Scope данных, sync, live-контроллер |
+| `authStateListenableProvider` | `lib/src/infrastructure/auth/providers/auth_state_listenable_provider.dart` | Listenable для go_router refresh | Роутер при смене сессии |
+| `clientIdentityServiceProvider` | `lib/src/infrastructure/shared/providers/client_identity_service_provider.dart` | Стабильный `clientId` установки | Операции счётчика, будущий ulsync `sourceId` |
+| `localOpLogRepositoryProvider` | `lib/src/infrastructure/counter/providers/local_op_log_repository_provider.dart` | Локальный журнал операций | Инкремент, sync, адаптер ulsync |
+| `ulsyncClientProvider` | `lib/src/infrastructure/sync/providers/ulsync_client_provider.dart` | Клиент ulsync для текущего пользователя | Sync, markChanged после инкремента |
+| `counterStateProvider` | `lib/src/infrastructure/counter/providers/counter_state_provider.dart` | Агрегированное значение счётчика для UI | Экран счётчика |
+| `incrementCounterUseCaseProvider` | `lib/src/infrastructure/counter/providers/increment_counter_use_case_provider.dart` | Use case инкремента + markChanged | ViewModel счётчика |
+| `syncCounterUseCaseProvider` | `lib/src/application/counter/providers/sync_counter_use_case_provider.dart` | Один обмен ulsync (`syncOnce`) | NeedSync, initial sync |
+| `syncStateRepositoryProvider` | `lib/src/infrastructure/sync/providers/sync_state_repository_provider.dart` | Маркеры lastSynced/lastExported | До шага 15 — счётчик; далее без вызовов из счётчика |
+| `needSyncControllerProvider` | `lib/src/infrastructure/sync/controllers/need_sync_controller.dart` | Debounce исходящего `syncOnce` после инкремента | После локального плюса |
+| `counterSyncCoordinatorProvider` | `lib/src/infrastructure/sync/controllers/counter_sync_coordinator.dart` | Mutex одного `syncOnce` для счётчика | Initial sync, NeedSync, live resume |
+| `counterInitialSyncControllerProvider` | `lib/src/infrastructure/sync/controllers/counter_initial_sync_controller.dart` | Initial sync при старте/логине | Холодный старт с сессией |
+| `ulsyncLiveControllerProvider` | `lib/src/infrastructure/sync/controllers/ulsync_live_controller.dart` | Живая лента ulsync и признак связи | Экран счётчика при входе; keepAlive |
+| `infrastructureInitProvider` | `lib/src/infrastructure/bootstrap/infrastructure_init_provider.dart` | Инициализация SharedPreferences и др. | `main.dart`, bootstrap |
+| `loginViewModelProvider` | `lib/src/presentation/auth/viewmodels/login_viewmodel.dart` | Состояние экрана входа | Login screen |
+| `signupViewModelProvider` | `lib/src/presentation/auth/viewmodels/signup_viewmodel.dart` | Состояние регистрации | Signup screen |
+| `counterViewModelProvider` | `lib/src/presentation/counter/viewmodels/counter_viewmodel.dart` | Состояние экрана счётчика | Counter screen |
+| `routerProvider` | `lib/src/router.dart` | Конфигурация go_router | `MaterialApp.router` |
