@@ -45,6 +45,11 @@ class UlsyncLiveController extends _$UlsyncLiveController {
   /// нужен [syncOnce], чтобы догнать очередь и сервер (сценарии H/J).
   bool _connectionWasLost = false;
 
+  /// Открывающий обмен в [_syncThenLive] не прошёл; на [SyncConnectionRestored]
+  /// нужен [syncOnce], иначе приложение, стартовавшее без сервера, не догонит
+  /// очередь после его подъёма (шаг 16b).
+  bool _openingSyncFailed = false;
+
   @override
   UlsyncLiveStatus build() {
     _isForeground = _lifecycleStateIsForeground(
@@ -99,6 +104,7 @@ class UlsyncLiveController extends _$UlsyncLiveController {
     }
     _isForeground = false;
     _connectionWasLost = false;
+    _openingSyncFailed = false;
 
     await _sub?.cancel();
     _sub = null;
@@ -129,6 +135,7 @@ class UlsyncLiveController extends _$UlsyncLiveController {
     if (client == null) {
       _boundClient = null;
       _connectionWasLost = false;
+      _openingSyncFailed = false;
       state = UlsyncLiveStatus.disconnected;
       return;
     }
@@ -145,9 +152,11 @@ class UlsyncLiveController extends _$UlsyncLiveController {
     final synced = await _runSyncOnce();
     if (!synced) {
       if (ref.mounted) {
+        _openingSyncFailed = true;
         state = UlsyncLiveStatus.disconnected;
       }
-      return;
+    } else {
+      _openingSyncFailed = false;
     }
 
     if (!ref.mounted) {
@@ -190,8 +199,10 @@ class UlsyncLiveController extends _$UlsyncLiveController {
           component: AppLogComponent.sync,
           message: 'Живая лента: связь восстановлена.',
         );
-        if (_connectionWasLost) {
-          _connectionWasLost = false;
+        final needsResync = _connectionWasLost || _openingSyncFailed;
+        _connectionWasLost = false;
+        _openingSyncFailed = false;
+        if (needsResync) {
           unawaited(_syncAfterReconnect());
         }
       case SyncUnknownType(:final entityType, :final id):
@@ -212,7 +223,7 @@ class UlsyncLiveController extends _$UlsyncLiveController {
       });
     } catch (e, st) {
       logSyncFailure(
-        message: 'Обмен перед открытием живой ленты не удался',
+        message: 'Обмен на старте живой ленты не удался',
         error: e,
         stackTrace: st,
       );
