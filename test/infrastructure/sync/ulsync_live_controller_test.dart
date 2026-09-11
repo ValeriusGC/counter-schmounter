@@ -37,7 +37,14 @@ void main() {
     fail('pumpUntil timeout');
   }
 
-  ProviderContainer createContainer({bool withClient = true}) {
+  /// Собирает контейнер с поддельным [FakeSyncTransport].
+  ///
+  /// [failOpeningSync] — первый pull в жизни транспорта бросает исключение,
+  /// имитируя недоступный сервер при открывающем обмене (шаг 16b).
+  ProviderContainer createContainer({
+    bool withClient = true,
+    bool failOpeningSync = false,
+  }) {
     return ProviderContainer(
       overrides: [
         sharedPreferencesProvider.overrideWithValue(prefs),
@@ -53,6 +60,10 @@ void main() {
             final fake = FakeSyncTransport();
             fakes.add(fake);
             fake.onPull = ({required int since, int? limit}) async {
+              // [pullCalls] уже содержит текущий вызов — падаем только на первом.
+              if (failOpeningSync && fake.pullCalls.length == 1) {
+                throw Exception('simulated server unavailable at startup');
+              }
               return PullPage(envelopes: const <Envelope>[], nextCursor: since);
             };
             final path = 'live_test_${fakes.length}_$uid.db';
@@ -330,5 +341,111 @@ void main() {
       expect(await container.read(counterStateProvider.future), 1);
       container.dispose();
     });
+
+    test(
+      'opening syncOnce failure still opens live and stays disconnected',
+      () async {
+        // Сервер «лежит» при первом обмене: syncOnce падает, но live() обязан
+        // открыться — иначе библиотека не начнёт цикл переподключения SSE.
+        final container = createContainer(failOpeningSync: true);
+        container.listen(ulsyncLiveControllerProvider, (previous, next) {});
+
+        await pumpUntil(() => fakes.isNotEmpty && fakes.last.liveCalls >= 1);
+
+        expect(
+          container.read(ulsyncLiveControllerProvider),
+          UlsyncLiveStatus.disconnected,
+        );
+        expect(fakes.last.liveCalls, greaterThanOrEqualTo(1));
+        expect(fakes.last.closed, isFalse);
+        expect(fakes.last.pullCalls, isNotEmpty);
+
+        container.dispose();
+      },
+    );
+
+    test(
+      'connection restored after opening sync failure runs syncOnce again',
+      () async {
+        // После подъёма «сервера» библиотека шлёт Restored; контроллер должен
+        // догнать очередь повторным syncOnce и перейти в connected.
+        final container = createContainer(failOpeningSync: true);
+        container.listen(ulsyncLiveControllerProvider, (previous, next) {});
+
+        await pumpUntil(() => fakes.isNotEmpty && fakes.last.liveCalls >= 1);
+        final fake = fakes.last;
+
+        expect(
+          container.read(ulsyncLiveControllerProvider),
+          UlsyncLiveStatus.disconnected,
+        );
+
+        final opRemote = IncrementOperation(
+          opId: 'op-opening-restore',
+          clientId: 'device-remote',
+          createdAt: DateTime.utc(2026, 9, 11, 12),
+        );
+        fake.onPull = ({required int since, int? limit}) async {
+          return PullPage(
+            envelopes: <Envelope>[
+              counterEnvelope(operation: opRemote, serverSeq: 1),
+            ],
+            nextCursor: 1,
+          );
+        };
+
+        final pullsBeforeRestore = fake.pullCalls.length;
+        fake.onConnectionState!(LiveConnectionState.restored);
+
+        await pumpUntil(
+          () => fake.pullCalls.length > pullsBeforeRestore,
+        );
+        await pumpUntil(
+          () =>
+              container.read(ulsyncLiveControllerProvider) ==
+              UlsyncLiveStatus.connected,
+        );
+
+        for (var i = 0; i < 80; i++) {
+          final value = await container.read(counterStateProvider.future);
+          if (value == 1) {
+            break;
+          }
+          await Future<void>.delayed(Duration.zero);
+        }
+
+        expect(await container.read(counterStateProvider.future), 1);
+        container.dispose();
+      },
+    );
+
+    test(
+      'connection restored without lost or opening failure skips extra syncOnce',
+      () async {
+        // Успешный старт: первый Restored не должен дублировать обмен
+        // (нет _connectionWasLost и нет _openingSyncFailed).
+        final container = createContainer();
+        container.listen(ulsyncLiveControllerProvider, (previous, next) {});
+
+        await pumpUntil(() => fakes.isNotEmpty && fakes.last.liveCalls >= 1);
+        final fake = fakes.last;
+        final pullsAfterStartup = fake.pullCalls.length;
+        expect(pullsAfterStartup, greaterThan(0));
+
+        fake.onConnectionState!(LiveConnectionState.restored);
+        await pumpUntil(
+          () =>
+              container.read(ulsyncLiveControllerProvider) ==
+              UlsyncLiveStatus.connected,
+        );
+
+        for (var i = 0; i < 20; i++) {
+          await Future<void>.delayed(Duration.zero);
+        }
+
+        expect(fake.pullCalls.length, pullsAfterStartup);
+        container.dispose();
+      },
+    );
   });
 }
