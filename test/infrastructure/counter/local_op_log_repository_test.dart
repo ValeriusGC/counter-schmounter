@@ -161,6 +161,45 @@ void main() {
         expect(operations.first.opId, opId);
       });
 
+      test('append notifies listeners so the screen can follow the journal', () async {
+        await repository.initialize();
+        var ticks = 0;
+        repository.addListener(() => ticks++);
+
+        await repository.append(
+          IncrementOperation(
+            opId: const Uuid().v4(),
+            clientId: 'test-client',
+            createdAt: DateTime.now(),
+          ),
+        );
+
+        expect(ticks, 1);
+
+        await repository.append(
+          IncrementOperation(
+            opId: const Uuid().v4(),
+            clientId: 'test-client',
+            createdAt: DateTime.now(),
+          ),
+        );
+        expect(ticks, 2);
+      });
+
+      test('duplicate append does not notify', () async {
+        await repository.initialize();
+        final op = IncrementOperation(
+          opId: const Uuid().v4(),
+          clientId: 'test-client',
+          createdAt: DateTime.now(),
+        );
+        await repository.append(op);
+        var ticks = 0;
+        repository.addListener(() => ticks++);
+        await repository.append(op);
+        expect(ticks, 0);
+      });
+
       test('appends multiple operations', () async {
         // Arrange
         await repository.initialize();
