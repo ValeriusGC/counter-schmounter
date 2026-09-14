@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:counter_schmounter/src/domain/counter/operations/counter_operation.dart';
@@ -41,7 +42,8 @@ const String _kCounterOperationsKeyBase = 'counter_operations';
 /// ВАЖНО (account-scope):
 /// - операции разных аккаунтов НЕ смешиваются
 /// - scope задаётся при создании репозитория
-class LocalOpLogRepositoryImpl implements LocalOpLogRepository {
+class LocalOpLogRepositoryImpl extends ChangeNotifier
+    implements LocalOpLogRepository {
   /// Создает экземпляр [LocalOpLogRepositoryImpl].
   ///
   /// [scope] определяет namespace хранения данных.
@@ -130,6 +132,7 @@ class LocalOpLogRepositoryImpl implements LocalOpLogRepository {
 
     // Сохраняем операции
     await _saveOperations(newOperations);
+    notifyListeners();
 
     AppLogger.info(
       component: AppLogComponent.localOpLog,
@@ -212,6 +215,7 @@ class LocalOpLogRepositoryImpl implements LocalOpLogRepository {
 
     final key = _storageKey();
     await _prefs.remove(key);
+    notifyListeners();
     AppLogger.info(
       component: AppLogComponent.localOpLog,
       message: 'Operations cleared',
