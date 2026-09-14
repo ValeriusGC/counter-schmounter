@@ -4,7 +4,9 @@ import 'package:mocktail/mocktail.dart';
 import 'package:sembast/sembast_memory.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:counter_schmounter/src/application/counter/use_cases/increment_counter_use_case.dart';
+import 'package:counter_schmounter/src/domain/counter/operations/counter_operation.dart';
 import 'package:counter_schmounter/src/domain/counter/operations/increment_operation.dart';
+import 'package:counter_schmounter/src/domain/counter/repositories/local_op_log_repository.dart';
 import 'package:counter_schmounter/src/infrastructure/counter/repositories/local_op_log_repository_impl.dart';
 import 'package:counter_schmounter/src/infrastructure/sync/ulsync_client_factory.dart';
 import '../../test_helpers/fake_sync_transport.dart';
@@ -166,5 +168,134 @@ void main() {
         await client.close();
       });
     });
+
+    group('write through ulsync client', () {
+      test('marks dirty in metadata when client is present', () async {
+        SharedPreferences.setMockInitialValues(<String, Object>{});
+        final prefs = await SharedPreferences.getInstance();
+        final localLog = LocalOpLogRepositoryImpl(prefs, scope: 'user:write');
+        await localLog.initialize();
+
+        const dbPath = 'increment_write_dirty.db';
+        await databaseFactoryMemory.deleteDatabase(dbPath);
+
+        final fake = FakeSyncTransport();
+        final client = await UlsyncClientFactory.open(
+          userScope: 'user-write',
+          sourceId: 'client-write',
+          localOpLog: localLog,
+          tokenProvider: () async => 't',
+          transport: fake,
+          databaseFactory: databaseFactoryMemory,
+          databasePathOverride: dbPath,
+        );
+
+        final store = await SembastMetadataStore.open(
+          databasePath: dbPath,
+          factory: databaseFactoryMemory,
+        );
+
+        final incrementUseCase = IncrementCounterUseCase(
+          mockClientIdentityService,
+          localLog,
+          syncClientOf: () async => client,
+        );
+        when(() => mockClientIdentityService.clientId).thenReturn('client-write');
+
+        final operation = await incrementUseCase.execute();
+
+        final dirty = await store.dirtyBatch(userScope: 'user-write', limit: 10);
+        expect(dirty.length, 1);
+        expect(dirty.single.id, operation.opId);
+        expect(dirty.single.dirty, isTrue);
+
+        await client.close();
+        await store.close();
+      });
+
+      test('persist failure propagates from write', () async {
+        SharedPreferences.setMockInitialValues(<String, Object>{});
+        final prefs = await SharedPreferences.getInstance();
+        final failingLog = _FailingLocalOpLog(prefs, scope: 'user:fail');
+        await failingLog.initialize();
+
+        const dbPath = 'increment_write_fail.db';
+        await databaseFactoryMemory.deleteDatabase(dbPath);
+
+        final client = await UlsyncClientFactory.open(
+          userScope: 'user-fail',
+          sourceId: 'client-fail',
+          localOpLog: failingLog,
+          tokenProvider: () async => 't',
+          transport: FakeSyncTransport(),
+          databaseFactory: databaseFactoryMemory,
+          databasePathOverride: dbPath,
+        );
+
+        final incrementUseCase = IncrementCounterUseCase(
+          mockClientIdentityService,
+          failingLog,
+          syncClientOf: () async => client,
+        );
+        when(() => mockClientIdentityService.clientId).thenReturn('client-fail');
+
+        await expectLater(incrementUseCase.execute(), throwsA(isException));
+        expect(failingLog.appendAttempts, 1);
+
+        await client.close();
+      });
+
+      test('without sync client only appends locally', () async {
+        final recordingLog = _RecordingAppendLog();
+        final incrementUseCase = IncrementCounterUseCase(
+          mockClientIdentityService,
+          recordingLog,
+        );
+
+        final operation = await incrementUseCase.execute();
+
+        expect(recordingLog.appended.length, 1);
+        expect(recordingLog.appended.single.opId, operation.opId);
+      });
+    });
   });
 }
+
+/// Журнал, который бросает на append — для проверки проброса ошибки [write].
+final class _FailingLocalOpLog extends LocalOpLogRepositoryImpl {
+  _FailingLocalOpLog(super.prefs, {required super.scope});
+
+  var appendAttempts = 0;
+
+  @override
+  Future<void> append(CounterOperation operation) async {
+    appendAttempts++;
+    throw Exception('simulated persist failure');
+  }
+}
+
+/// Считает append без реального хранилища.
+final class _RecordingAppendLog implements LocalOpLogRepository {
+  final List<CounterOperation> appended = <CounterOperation>[];
+
+  @override
+  Future<void> initialize() async {}
+
+  @override
+  Future<void> append(CounterOperation operation) async {
+    appended.add(operation);
+  }
+
+  @override
+  Future<List<CounterOperation>> getAll() async =>
+      List<CounterOperation>.from(appended);
+
+  @override
+  Future<CounterOperation?> byId(String opId) async => null;
+
+  @override
+  Future<void> clear() async {
+    appended.clear();
+  }
+}
+

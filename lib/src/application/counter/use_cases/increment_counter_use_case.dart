@@ -87,7 +87,7 @@ class IncrementCounterUseCase {
       message: 'Increment operation saved to repository',
       context: <String, Object?>{
         'op_id': opId,
-        'marked_for_sync': client != null,
+        'marked_for_sync': true,
       },
     );
 
