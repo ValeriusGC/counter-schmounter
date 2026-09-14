@@ -9,10 +9,12 @@ import 'package:counter_schmounter/src/infrastructure/shared/logging/app_logger.
 import 'package:counter_schmounter/src/infrastructure/shared/storage/storage_migration.dart';
 import 'package:counter_schmounter/src/infrastructure/shared/storage/storage_schema_version.dart';
 
-/// Максимальное количество операций в op-log.
+/// Порог предупреждения о размере op-log (не лимит удаления).
 ///
-/// При превышении этого лимита самые старые операции удаляются,
-/// остаются только последние [kMaxOperationsCount] операций.
+/// После круга 1a журнал **не усекается**: неподтверждённое сервером
+/// удалять нельзя (§7.4 решения), а число на экране равно длине журнала —
+/// усечение ломало бы счётчик. При превышении порога пишется одна строка
+/// в лог; осмысленное усечение потребует базового значения в модели (OQ).
 const int kMaxOperationsCount = 1000;
 
 /// Ключ для хранения версии схемы в SharedPreferences.
@@ -33,7 +35,7 @@ const String _kCounterOperationsKeyBase = 'counter_operations';
 /// Сохраняет операции в JSON формате и обеспечивает:
 /// - Персистентность между перезапусками приложения
 /// - Дедупликацию операций по `op_id`
-/// - Ограничение роста op-log (удаление старых операций)
+/// - Предупреждение при большом размере op-log (без удаления операций)
 /// - Миграции схемы данных
 ///
 /// ВАЖНО (account-scope):
@@ -124,11 +126,10 @@ class LocalOpLogRepositoryImpl implements LocalOpLogRepository {
     // Добавляем новую операцию
     final newOperations = [...operations, operation];
 
-    // Применяем ограничение роста (удаляем старые операции, если превышен лимит)
-    final compactedOperations = _compactIfNeeded(newOperations);
+    _warnIfJournalLarge(newOperations.length);
 
     // Сохраняем операции
-    await _saveOperations(compactedOperations);
+    await _saveOperations(newOperations);
 
     AppLogger.info(
       component: AppLogComponent.localOpLog,
@@ -137,7 +138,7 @@ class LocalOpLogRepositoryImpl implements LocalOpLogRepository {
         'scope': _scope,
         'storage_key': _storageKey(),
         'op_id': operation.opId,
-        'total_operations': compactedOperations.length,
+        'total_operations': newOperations.length,
       },
     );
   }
@@ -231,27 +232,26 @@ class LocalOpLogRepositoryImpl implements LocalOpLogRepository {
     await _prefs.setString(_storageKey(), jsonString);
   }
 
-  /// Применяет компактизацию op-log, если превышен лимит операций.
+  /// Пишет предупреждение, если журнал превысил [kMaxOperationsCount].
   ///
-  /// Удаляет самые старые операции, оставляя только последние [kMaxOperationsCount] операций.
-  List<CounterOperation> _compactIfNeeded(List<CounterOperation> operations) {
-    if (operations.length <= kMaxOperationsCount) {
-      return operations;
+  /// Удаление снято: вместе со «старыми» операциями исчезали неотправленные
+  /// и само число на экране. Рост журнала без базового значения счётчика —
+  /// открытый вопрос приложения; здесь только фиксируем размер в логе.
+  void _warnIfJournalLarge(int operationCount) {
+    if (operationCount <= kMaxOperationsCount) {
+      return;
     }
 
-    final removedCount = operations.length - kMaxOperationsCount;
     AppLogger.info(
       component: AppLogComponent.localOpLog,
-      message: 'Compacting op-log: removing oldest operations',
+      message:
+          'Журнал операций превысил порог предупреждения; усечение отключено',
       context: <String, Object?>{
         'scope': _scope,
         'storage_key': _storageKey(),
-        'removed_count': removedCount,
-        'limit': kMaxOperationsCount,
+        'operations_count': operationCount,
+        'warning_threshold': kMaxOperationsCount,
       },
     );
-
-    // Оставляем только последние kMaxOperationsCount операций
-    return operations.sublist(removedCount);
   }
 }

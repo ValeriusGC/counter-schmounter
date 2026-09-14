@@ -14,6 +14,11 @@ import 'package:counter_schmounter/src/infrastructure/counter/codecs/counter_ope
 ///
 /// [apply] делегирует в [LocalOpLogRepository.append]: дедупликация по `op_id`
 /// даёт идемпотентность, которую требует контракт адаптера.
+///
+/// [EntityAdapter.listIds] отдаёт библиотеке полный список `op_id` журнала
+/// для локальной сверки при первом обмене: записи, о которых ulsync не знал
+/// (до `write`, после удаления служебной базы), помечаются и догоняются
+/// обменом — сценарий G4 круга 1a (§7.2 решения).
 EntityAdapter<CounterOperation> counterOperationAdapter(
   LocalOpLogRepository localOpLog,
 ) {
@@ -32,5 +37,7 @@ EntityAdapter<CounterOperation> counterOperationAdapter(
     },
     load: (String id) => localOpLog.byId(id),
     apply: (CounterOperation op) => localOpLog.append(op),
+    listIds: () async =>
+        (await localOpLog.getAll()).map((operation) => operation.opId).toList(),
   );
 }

@@ -376,13 +376,13 @@ void main() {
       });
     });
 
-    group('compaction', () {
-      test('removes oldest operations when limit exceeded', () async {
-        // Arrange
+    group('journal integrity', () {
+      test('keeps all operations when count exceeds warning threshold', () async {
+        // Arrange — круг 1a: усечение снято (§7.4), порог только для лога.
         await repository.initialize();
-        const maxOps = 1000;
+        const threshold = kMaxOperationsCount;
         final operations = List.generate(
-          maxOps + 100, // Превышаем лимит на 100
+          threshold + 1,
           (index) => IncrementOperation(
             opId: const Uuid().v4(),
             clientId: 'test-client',
@@ -395,11 +395,10 @@ void main() {
           await repository.append(op);
         }
 
-        // Assert
+        // Assert — ни одна операция не потеряна
         final loaded = await repository.getAll();
-        expect(loaded.length, maxOps);
-        // Должны остаться последние maxOps операций
-        expect(loaded.first.opId, operations[100].opId);
+        expect(loaded.length, threshold + 1);
+        expect(loaded.first.opId, operations.first.opId);
         expect(loaded.last.opId, operations.last.opId);
       });
     });

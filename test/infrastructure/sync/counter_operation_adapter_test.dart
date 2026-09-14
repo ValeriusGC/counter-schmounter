@@ -33,6 +33,20 @@ void main() {
       expect(localOpLog.appended.length, 1);
       expect(localOpLog.appended.single.opId, operation.opId);
     });
+
+    test('listIds returns every op_id from the journal', () async {
+      final second = IncrementOperation(
+        opId: 'op-adapter-2',
+        clientId: 'client-b',
+        createdAt: DateTime.utc(2026, 2, 1, 10),
+      );
+      await localOpLog.append(operation);
+      await localOpLog.append(second);
+
+      final ids = await adapter.listIds!();
+
+      expect(ids, <String>[operation.opId, second.opId]);
+    });
   });
 }
 
