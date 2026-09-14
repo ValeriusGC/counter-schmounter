@@ -95,6 +95,33 @@ void main() {
   });
 
   group('UlsyncLiveController', () {
+    test('journal append rebuilds counter without SyncApplied', () async {
+      final container = createContainer();
+      addTearDown(container.dispose);
+      container.listen(ulsyncLiveControllerProvider, (previous, next) {});
+
+      await pumpUntil(() => fakes.isNotEmpty && fakes.last.liveCalls >= 1);
+      expect(await container.read(counterStateProvider.future), 0);
+
+      await localLog.append(
+        IncrementOperation(
+          opId: 'op-journal-only',
+          clientId: 'device-local',
+          createdAt: DateTime.utc(2026, 9, 14, 15),
+        ),
+      );
+
+      for (var i = 0; i < 80; i++) {
+        final value = await container.read(counterStateProvider.future);
+        if (value == 1) {
+          break;
+        }
+        await Future<void>.delayed(Duration.zero);
+      }
+
+      expect(await container.read(counterStateProvider.future), 1);
+    });
+
     test('SyncApplied invalidates counterStateProvider', () async {
       final container = createContainer();
       container.listen(ulsyncLiveControllerProvider, (previous, next) {});
@@ -191,7 +218,7 @@ void main() {
       container.dispose();
     });
 
-    test('background closes live; resume runs pull before live', () async {
+    test('background closes live; resume opens live before opening syncOnce', () async {
       final container = createContainer();
       container.listen(ulsyncLiveControllerProvider, (previous, next) {});
 
@@ -211,10 +238,10 @@ void main() {
           .onAppResumed();
       await pumpUntil(() => fakes[1].liveCalls >= 1);
 
-      final pullIndex = fakes[1].callLog.indexOf('pull');
       final liveIndex = fakes[1].callLog.indexOf('live');
-      expect(pullIndex, greaterThanOrEqualTo(0));
-      expect(liveIndex, greaterThan(pullIndex));
+      final pullIndex = fakes[1].callLog.indexOf('pull');
+      expect(liveIndex, greaterThanOrEqualTo(0));
+      expect(pullIndex, greaterThan(liveIndex));
 
       await container
           .read(ulsyncLiveControllerProvider.notifier)
@@ -420,10 +447,8 @@ void main() {
     );
 
     test(
-      'connection restored without lost or opening failure skips extra syncOnce',
+      'connection restored always runs catch-up even after a quiet start',
       () async {
-        // Успешный старт: первый Restored не должен дублировать обмен
-        // (нет _connectionWasLost и нет _openingSyncFailed).
         final container = createContainer();
         container.listen(ulsyncLiveControllerProvider, (previous, next) {});
 
@@ -438,12 +463,8 @@ void main() {
               container.read(ulsyncLiveControllerProvider) ==
               UlsyncLiveStatus.connected,
         );
+        await pumpUntil(() => fake.pullCalls.length > pullsAfterStartup);
 
-        for (var i = 0; i < 20; i++) {
-          await Future<void>.delayed(Duration.zero);
-        }
-
-        expect(fake.pullCalls.length, pullsAfterStartup);
         container.dispose();
       },
     );

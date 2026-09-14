@@ -8,6 +8,7 @@ import 'package:counter_schmounter/src/application/counter/providers/sync_counte
 import 'package:counter_schmounter/src/infrastructure/counter/providers/counter_state_provider.dart';
 import 'package:counter_schmounter/src/infrastructure/shared/logging/app_logger.dart';
 import 'package:counter_schmounter/src/infrastructure/sync/controllers/counter_sync_coordinator.dart';
+import 'package:counter_schmounter/src/infrastructure/sync/controllers/ulsync_catch_up.dart';
 import 'package:counter_schmounter/src/infrastructure/sync/providers/ulsync_client_provider.dart';
 import 'package:counter_schmounter/src/infrastructure/sync/sync_failure_logging.dart';
 
@@ -24,9 +25,11 @@ enum UlsyncLiveStatus {
 
 /// Слушатель живой ленты ulsync: передний план, события, признак связи.
 ///
-/// Конверты применяет библиотека; на [SyncApplied] экран перечитывает
-/// [counterStateProvider]. В фоне HTTP закрывается через [UlsyncClient.close],
-/// потому что отмена подписки на broadcast не рвёт SSE.
+/// Обмен гоняет [CounterSyncCoordinator] до тишины. Поводы одни и те же:
+/// старт, возврат на экран, «связь есть», плюс с экрана, таймер 3 с.
+/// Конверты применяет библиотека; журнал сам будит экран. В фоне HTTP
+/// закрывается через [UlsyncClient.close], потому что отмена подписки на
+/// broadcast не рвёт SSE.
 @Riverpod(keepAlive: true)
 class UlsyncLiveController extends _$UlsyncLiveController {
   /// Подписка на broadcast [UlsyncClient.live]; cancel не закрывает HTTP.
@@ -41,14 +44,8 @@ class UlsyncLiveController extends _$UlsyncLiveController {
   /// Защита от повторного hide+pause: второй фон не закрывает новый клиент.
   bool _isForeground = true;
 
-  /// Был [SyncConnectionLost] после последнего обмена; на [SyncConnectionRestored]
-  /// нужен [syncOnce], чтобы догнать очередь и сервер (сценарии H/J).
-  bool _connectionWasLost = false;
-
-  /// Открывающий обмен в [_syncThenLive] не прошёл; на [SyncConnectionRestored]
-  /// нужен [syncOnce], иначе приложение, стартовавшее без сервера, не догонит
-  /// очередь после его подъёма (шаг 16b).
-  bool _openingSyncFailed = false;
+  /// Пока на экране — раз в 3 с ещё один обмен. Подстраховка, не эвристика.
+  Timer? _safety;
 
   @override
   UlsyncLiveStatus build() {
@@ -70,6 +67,8 @@ class UlsyncLiveController extends _$UlsyncLiveController {
     );
 
     ref.onDispose(() {
+      _safety?.cancel();
+      _safety = null;
       _lifecycle?.dispose();
       _lifecycle = null;
       unawaited(_sub?.cancel());
@@ -80,14 +79,13 @@ class UlsyncLiveController extends _$UlsyncLiveController {
   }
 
   /// Вызывается [AppLifecycleListener.onResume] и тестами.
-  ///
-  /// Сначала [syncOnce] через координатор, затем снова открывает ленту.
   Future<void> onAppResumed() async {
     _isForeground = true;
 
     final client = await ref.read(ulsyncClientProvider.future);
     if (client == null) {
       state = UlsyncLiveStatus.disconnected;
+      _stopSafety();
       return;
     }
 
@@ -103,8 +101,7 @@ class UlsyncLiveController extends _$UlsyncLiveController {
       return;
     }
     _isForeground = false;
-    _connectionWasLost = false;
-    _openingSyncFailed = false;
+    _stopSafety();
 
     await _sub?.cancel();
     _sub = null;
@@ -134,8 +131,7 @@ class UlsyncLiveController extends _$UlsyncLiveController {
     final client = next.asData?.value;
     if (client == null) {
       _boundClient = null;
-      _connectionWasLost = false;
-      _openingSyncFailed = false;
+      _stopSafety();
       state = UlsyncLiveStatus.disconnected;
       return;
     }
@@ -149,16 +145,6 @@ class UlsyncLiveController extends _$UlsyncLiveController {
   }
 
   Future<void> _syncThenLive(UlsyncClient client) async {
-    final synced = await _runSyncOnce();
-    if (!synced) {
-      if (ref.mounted) {
-        _openingSyncFailed = true;
-        state = UlsyncLiveStatus.disconnected;
-      }
-    } else {
-      _openingSyncFailed = false;
-    }
-
     if (!ref.mounted) {
       return;
     }
@@ -167,6 +153,8 @@ class UlsyncLiveController extends _$UlsyncLiveController {
       return;
     }
 
+    // Ленту открываем сразу: нет сервера — стучимся сами, не ждём, пока
+    // один обмен 30 секунд убедится, что никто не отвечает.
     await _sub?.cancel();
     try {
       _sub = client.live().listen(_onEvent, onError: _onError);
@@ -177,7 +165,11 @@ class UlsyncLiveController extends _$UlsyncLiveController {
         stackTrace: st,
       );
       state = UlsyncLiveStatus.disconnected;
+      return;
     }
+
+    _startSafety();
+    await _runSyncOnce();
   }
 
   void _onEvent(SyncEvent event) {
@@ -187,7 +179,6 @@ class UlsyncLiveController extends _$UlsyncLiveController {
       case SyncCursorAdvanced():
         break;
       case SyncConnectionLost():
-        _connectionWasLost = true;
         state = UlsyncLiveStatus.disconnected;
         AppLogger.info(
           component: AppLogComponent.sync,
@@ -199,12 +190,7 @@ class UlsyncLiveController extends _$UlsyncLiveController {
           component: AppLogComponent.sync,
           message: 'Живая лента: связь восстановлена.',
         );
-        final needsResync = _connectionWasLost || _openingSyncFailed;
-        _connectionWasLost = false;
-        _openingSyncFailed = false;
-        if (needsResync) {
-          unawaited(_syncAfterReconnect());
-        }
+        unawaited(_runSyncOnce());
       case SyncUnknownType(:final entityType, :final id):
         AppLogger.info(
           component: AppLogComponent.sync,
@@ -214,8 +200,12 @@ class UlsyncLiveController extends _$UlsyncLiveController {
     }
   }
 
-  /// Один [syncOnce] и перечитывание счётчика; ленту не переоткрывает.
+  /// Обмен до тишины и перечитывание счётчика; ленту не переоткрывает.
   Future<bool> _runSyncOnce() async {
+    if (!_isForeground || !ref.mounted) {
+      return false;
+    }
+
     try {
       await ref.read(counterSyncCoordinatorProvider.notifier).runOnce(() async {
         final useCase = await ref.read(syncCounterUseCaseProvider.future);
@@ -223,43 +213,32 @@ class UlsyncLiveController extends _$UlsyncLiveController {
       });
     } catch (e, st) {
       logSyncFailure(
-        message: 'Обмен на старте живой ленты не удался',
+        message: 'Обмен живой ленты не удался',
         error: e,
         stackTrace: st,
       );
+      if (ref.mounted && state != UlsyncLiveStatus.connected) {
+        state = UlsyncLiveStatus.disconnected;
+      }
       return false;
     }
 
     if (ref.mounted) {
-      // syncOnce мог применить входящие конверты без SyncApplied на ленте.
       ref.invalidate(counterStateProvider);
     }
     return true;
   }
 
-  /// После обрыва в переднем плане: догнать сервер и сбросить локальную очередь.
-  Future<void> _syncAfterReconnect() async {
-    if (!_isForeground || _boundClient == null) {
-      return;
-    }
+  void _startSafety() {
+    _safety?.cancel();
+    _safety = Timer.periodic(kUlsyncCatchUpSafetyInterval, (_) {
+      unawaited(_runSyncOnce());
+    });
+  }
 
-    try {
-      await ref.read(counterSyncCoordinatorProvider.notifier).runOnce(() async {
-        final useCase = await ref.read(syncCounterUseCaseProvider.future);
-        await useCase.execute();
-      });
-    } catch (e, st) {
-      logSyncFailure(
-        message: 'Обмен после восстановления связи не удался',
-        error: e,
-        stackTrace: st,
-      );
-      return;
-    }
-
-    if (ref.mounted) {
-      ref.invalidate(counterStateProvider);
-    }
+  void _stopSafety() {
+    _safety?.cancel();
+    _safety = null;
   }
 
   void _onError(Object error, StackTrace stackTrace) {

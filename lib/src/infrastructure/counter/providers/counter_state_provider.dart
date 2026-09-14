@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import 'package:counter_schmounter/src/domain/counter/utils/counter_aggregator.dart';
@@ -13,7 +14,8 @@ part 'counter_state_provider.g.dart';
 /// - агрегирует операции через [CounterAggregator],
 /// - возвращает текущее значение счетчика.
 ///
-/// Обновляется исключительно через:
+/// Обновляется через:
+/// - запись в журнал (журнал сам будит экран),
 /// - invalidate (sync / живая лента),
 /// - первый watch (startup).
 ///
@@ -29,6 +31,12 @@ Future<int> counterState(Ref ref) async {
   );
 
   final repository = ref.watch(localOpLogRepositoryProvider);
+  if (repository is Listenable) {
+    final listenable = repository as Listenable;
+    void listener() => ref.invalidateSelf();
+    listenable.addListener(listener);
+    ref.onDispose(() => listenable.removeListener(listener));
+  }
 
   /// Читаем все операции
   final operations = await repository.getAll();
