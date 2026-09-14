@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:uuid/uuid.dart';
 import 'package:ulsync/ulsync.dart';
 
@@ -13,7 +11,8 @@ import 'package:counter_schmounter/src/infrastructure/shared/logging/app_logger.
 /// Инкапсулирует полную логику увеличения счетчика:
 /// - создает [IncrementOperation] с правильными метаданными (op_id, client_id, created_at)
 /// - сохраняет операцию в [LocalOpLogRepository]
-/// - после успешной локальной записи отмечает операцию в ulsync, если клиент есть
+/// - при наличии клиента ulsync записывает операцию через [UlsyncClient.write],
+///   чтобы отметка на отправку и persist журнала не расходились
 ///
 /// Не содержит зависимостей от UI слоя.
 class IncrementCounterUseCase {
@@ -38,11 +37,19 @@ class IncrementCounterUseCase {
   /// Выполняет увеличение счетчика.
   ///
   /// Создает новую [IncrementOperation] с уникальным идентификатором,
-  /// текущим временем и идентификатором клиента, затем сохраняет её
-  /// в [LocalOpLogRepository]. Порядок: сначала append, затем [UlsyncClient.markChanged]
-  /// (без await — ulsync сериализует markChanged и syncOnce; ожидание блокирует UI).
+  /// текущим временем и идентификатором клиента, затем сохраняет её.
   ///
-  /// Возвращает созданную операцию.
+  /// С клиентом ulsync вызывает [UlsyncClient.write]: библиотека **сначала**
+  /// ставит отметку «есть неотправленное», **затем** выполняет [persist] —
+  /// запись в журнал. Прежний порядок (append, потом отдельный
+  /// [UlsyncClient.markChanged] через `unawaited`) допускал состояние
+  /// «операция в журнале есть, а в очередь не попала» — отсюда расхождение
+  /// 79/76 на двух устройствах (круг 1a, §7.1 решения).
+  ///
+  /// Без клиента (анонимный режим по решению круга 1) — только локальный
+  /// [LocalOpLogRepository.append]; синхронизации нет.
+  ///
+  /// Возвращает созданную операцию. Ошибка [persist] пробрасывается вызывающему.
   Future<IncrementOperation> execute() async {
     final clientId = _clientIdentityService.clientId;
     final opId = const Uuid().v4();
@@ -60,17 +67,20 @@ class IncrementCounterUseCase {
       context: <String, Object?>{'op_id': opId, 'client_id': clientId},
     );
 
-    await _localOpLogRepository.append(operation);
-
     final client = await _syncClientOf();
-    if (client != null) {
-      unawaited(
-        client.markChanged(
-          entityType: 'counter_operation',
-          id: operation.opId,
-        ),
-      );
+    if (client == null) {
+      // Без входа синхронизации нет по решению круга 1: журнал остаётся локальным.
+      await _localOpLogRepository.append(operation);
+      return operation;
     }
+
+    // Внутри persist — только запись журнала; вызовы клиента оттуда библиотека
+    // отвергает (шаг 20), чтобы не зависнуть на общем замке.
+    await client.write(
+      entityType: 'counter_operation',
+      id: operation.opId,
+      persist: () => _localOpLogRepository.append(operation),
+    );
 
     AppLogger.info(
       component: AppLogComponent.localOpLog,
