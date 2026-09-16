@@ -19,7 +19,9 @@ enum UlsyncLiveStatus {
   /// Ленты нет, клиент закрыт, или последнее событие — потеря связи.
   disconnected,
 
-  /// Последнее событие — [SyncConnectionRestored], включая первое открытие.
+  /// Лента открыта и обмен с сервером успешен: либо [SyncConnectionRestored],
+  /// либо последний [syncOnce] в [_runSyncOnce] завершился без ошибки при
+  /// активной подписке на [UlsyncClient.live].
   connected,
 }
 
@@ -225,6 +227,11 @@ class UlsyncLiveController extends _$UlsyncLiveController {
 
     if (ref.mounted) {
       ref.invalidate(counterStateProvider);
+      // Успешный обмен при открытой ленте — «на связи», даже если SSE ещё
+      // не прислал Restored (гонка при старте или docker без стабильного SSE).
+      if (_sub != null) {
+        state = UlsyncLiveStatus.connected;
+      }
     }
     return true;
   }

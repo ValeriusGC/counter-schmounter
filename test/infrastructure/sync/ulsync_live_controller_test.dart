@@ -370,6 +370,23 @@ void main() {
     });
 
     test(
+      'successful opening syncOnce marks connected without Restored event',
+      () async {
+        final container = createContainer();
+        container.listen(ulsyncLiveControllerProvider, (previous, next) {});
+
+        await pumpUntil(() => fakes.isNotEmpty && fakes.last.liveCalls >= 1);
+        await pumpUntil(
+          () =>
+              container.read(ulsyncLiveControllerProvider) ==
+              UlsyncLiveStatus.connected,
+        );
+
+        container.dispose();
+      },
+    );
+
+    test(
       'opening syncOnce failure still opens live and stays disconnected',
       () async {
         // Сервер «лежит» при первом обмене: syncOnce падает, но live() обязан
