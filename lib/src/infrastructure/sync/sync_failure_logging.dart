@@ -3,6 +3,10 @@ import 'package:ulsync/ulsync.dart';
 import 'package:counter_schmounter/src/infrastructure/shared/logging/app_logger.dart';
 
 /// Логирует сбой sync: сетевой таймаут — info без stack trace, остальное — error.
+///
+/// [OriginMismatchException] (чужой склад, HTTP `409` на hello) идёт тем же
+/// путём, что отказ из-за подмены `source_id`: уровень error, без успешного
+/// обмена на экране. UI для этого случая — открытый вопрос в `docs/OPEN_QUESTIONS.md`.
 void logSyncFailure({
   required String message,
   required Object error,

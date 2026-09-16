@@ -12,8 +12,15 @@ import 'package:counter_schmounter/src/infrastructure/sync/adapters/counter_oper
 import 'package:counter_schmounter/src/infrastructure/sync/ulsync_base_url.dart';
 
 /// Фабрика клиента ulsync с адаптером операции счётчика.
+///
+/// Единственная точка сборки [UlsyncClient] в приложении: происхождение
+/// ([kUlsyncOrigin]) и адрес ([kUlsyncBaseUrl]) задаются здесь, не в провайдере.
 abstract final class UlsyncClientFactory {
   /// Открывает клиента для [userScope].
+  ///
+  /// Происхождение всегда [kUlsyncOrigin] — имя контура, общее для всех
+  /// установок сборки. Библиотека отправит его в `Ulsync-Origin` при hello
+  /// до сверки; чужой авторский склад откажет [OriginMismatchException].
   ///
   /// [transport] и [databaseFactory] — только тесты. В рабочем коде оба null:
   /// транспорт HTTP создаст сам [UlsyncClient], фабрику БД выберет пакет.
@@ -40,6 +47,7 @@ abstract final class UlsyncClientFactory {
 
     return UlsyncClient(
       baseUrl: Uri.parse(kUlsyncBaseUrl),
+      origin: kUlsyncOrigin,
       userScope: userScope,
       sourceId: sourceId,
       tokenProvider: tokenProvider,
