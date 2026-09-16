@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:ulsync/ulsync.dart';
 
 import 'package:counter_schmounter/src/infrastructure/counter/repositories/local_op_log_repository_impl.dart';
+import 'package:counter_schmounter/src/infrastructure/sync/ulsync_base_url.dart';
 import 'package:counter_schmounter/src/infrastructure/sync/ulsync_client_factory.dart';
 import '../../test_helpers/fake_sync_transport.dart';
 
@@ -30,6 +31,7 @@ void main() {
         );
 
         expect(client1, isA<UlsyncClient>());
+        expect(client1.origin, kUlsyncOrigin);
 
         await client1.close();
 
